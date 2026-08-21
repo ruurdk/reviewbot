@@ -1,0 +1,27 @@
+{
+  "items": [
+    {
+      "category": "api-contract",
+      "description": "can_read() reports connection usability but not whether data is waiting; a non-breaking readiness check is expected to report pending data without consuming it",
+      "file": "redis/_parsers/base.py",
+      "id": "d1",
+      "kind": "defect",
+      "line": 536,
+      "note": "Established across a four-comment thread; the author confirmed the method 'should also check for data waiting in the connection'.",
+      "severity": "major"
+    },
+    {
+      "category": "test-coverage",
+      "description": "no test covers a push notification arriving as the first parsed message on a sync hiredis connection after the removal here",
+      "file": "redis/_parsers/hiredis.py",
+      "id": "d2",
+      "kind": "defect",
+      "line": 146,
+      "note": "Reviewer asked for it; author added tests for this corner case.",
+      "severity": "minor"
+    }
+  ],
+  "labeller": "claude-opus-5 (CANDIDATE -- needs human confirmation, see docs/sequence-beats.md)",
+  "note": "Connection-readiness semantics. No beat; included for gold coverage of the connection spine.",
+  "pr_number": 4063
+}

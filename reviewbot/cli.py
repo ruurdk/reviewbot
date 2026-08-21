@@ -13,7 +13,7 @@ from .accounting import Ledger, load_records
 from .agents import BaselineAgent, MemoryAgent
 from .claude import ClaudeClient
 from .config import ModelConfig
-from .dataset import Sequence, disclosure_table, rows, summary as dataset_summary, validate
+from .dataset import BEATS, Sequence, disclosure_table, rows, summary as dataset_summary, validate
 from .env import DEFAULT_ENV_FILE, REQUIRED_BY, is_placeholder, load_env, missing
 from .github import GitHubClient, PRStore
 from . import preflight
@@ -258,6 +258,30 @@ def cmd_curate(args: argparse.Namespace) -> int:
     client = GitHubClient(args.cache)
     spine = args.spine.split(",") if args.spine else curate.DEFAULT_SPINE
     candidates = curate.scan(client, args.repo, spine=spine, pages=args.pages)
+
+    if args.add_pr:
+        sequence = Sequence.load(args.out)
+        merged_at = {c.number: c.merged_at for c in candidates}
+        target = next((c for c in candidates if c.number == args.add_pr), None)
+        if target is None:
+            print(
+                f"PR #{args.add_pr} is not in the scanned window; widen --pages",
+                file=sys.stderr,
+            )
+            return 1
+        beats = [b for b in args.add_pr_beats.split(",") if b]
+        spliced = curate.splice(sequence, target, merged_at, beats=beats)
+        spliced.save(args.out)
+        store = PRStore(args.store)
+        store.ingest(client, args.repo, [args.add_pr])
+        entry = next(e for e in spliced if e.pr_number == args.add_pr)
+        print(
+            f"spliced #{args.add_pr} in at ordinal {entry.ordinal}; sequence is now "
+            f"{len(spliced)} PRs"
+        )
+        for problem in validate(spliced, store):
+            print(f"  - {problem}")
+        return 0
     selected, stats = curate.select(candidates, spine=spine, target=args.target)
     print(curate.report(selected, stats, spine))
     if stats["style_guide_candidates"]:
@@ -295,6 +319,45 @@ def cmd_curate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_beats(args: argparse.Namespace) -> int:
+    """Assign a narrative beat or a gold-label flag to a PR already in the sequence.
+
+    Beat assignment is editorial: it comes from reading diffs and the merged
+    human review, not from a rule. Doing it through a command rather than by
+    hand-editing sequence.json keeps it reproducible and keeps the ordinals
+    consistent.
+    """
+    sequence = Sequence.load(args.sequence)
+    entry = next((e for e in sequence if e.pr_number == args.pr), None)
+    if entry is None:
+        print(f"PR #{args.pr} is not in {args.sequence}", file=sys.stderr)
+        return 1
+    for beat in args.add:
+        if beat not in BEATS:
+            print(f"unknown beat {beat!r}; expected one of {', '.join(BEATS)}", file=sys.stderr)
+            return 1
+        if beat not in entry.beats:
+            entry.beats.append(beat)
+    for beat in args.remove:
+        if beat in entry.beats:
+            entry.beats.remove(beat)
+    if args.gold is not None:
+        entry.gold_labeled = args.gold
+    if args.note:
+        entry.note = (entry.note + " | " if entry.note else "") + args.note
+    sequence.save(args.sequence)
+    print(
+        f"ordinal {entry.ordinal} #{entry.pr_number}: beats={entry.beats or ['-']} "
+        f"gold={'yes' if entry.gold_labeled else 'no'}"
+    )
+    problems = validate(sequence, PRStore(args.store))
+    if problems:
+        print("\nstill outstanding:")
+        for p in problems:
+            print(f"  - {p}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="reviewbot", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -322,7 +385,28 @@ def build_parser() -> argparse.ArgumentParser:
     cu.add_argument("--store", default="data/prs")
     cu.add_argument("--cache", default="data/cache/github")
     cu.add_argument("--force", action="store_true", help="overwrite an existing sequence.json")
+    cu.add_argument(
+        "--add-pr",
+        type=int,
+        default=0,
+        help="splice this PR into an existing sequence chronologically (for a beat "
+        "the selection rule cannot find, e.g. a style-guide edit) and renumber",
+    )
+    cu.add_argument("--add-pr-beats", default="", help="comma-separated beats for --add-pr")
     cu.set_defaults(func=cmd_curate)
+
+    bt = sub.add_parser("beats", help="assign a narrative beat or gold flag to a PR in the sequence")
+    bt.add_argument("--pr", type=int, required=True)
+    bt.add_argument("--add", action="append", default=[], help=f"one of: {', '.join(BEATS)}")
+    bt.add_argument("--remove", action="append", default=[])
+    gold = bt.add_mutually_exclusive_group()
+    gold.add_argument("--gold", dest="gold", action="store_true", default=None,
+                      help="mark this PR as hand-labelled")
+    gold.add_argument("--no-gold", dest="gold", action="store_false")
+    bt.add_argument("--note", default="")
+    bt.add_argument("--sequence", default=DEFAULT_SEQUENCE)
+    bt.add_argument("--store", default="data/prs")
+    bt.set_defaults(func=cmd_beats)
 
     ds = sub.add_parser("dataset", help="validate or describe the frozen sequence")
     ds.add_argument("action", choices=["validate", "table", "summary"])

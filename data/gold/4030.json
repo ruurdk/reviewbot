@@ -1,0 +1,6 @@
+{
+  "items": [],
+  "labeller": "claude-opus-5 (CANDIDATE -- needs human confirmation, see docs/sequence-beats.md)",
+  "note": "convention_change beat (ordinal 3). Adds an 'AI-driven contributions' section to CONTRIBUTING.md and creates specs/redis_commands_guide.md. Included because it changes the rulebook, not because it contains defects -- an empty defect list is the expected label. What it tests is whether later command-adding PRs (ordinals 8-10) are reviewed under the NEW guide, which the primer never saw.",
+  "pr_number": 4030
+}

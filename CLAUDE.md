@@ -31,6 +31,7 @@ python3 -m reviewbot doctor                          # env + config fingerprint
 python3 -m reviewbot ingest --prs 3001,3002          # fetch PRs into data/prs (needs GITHUB_TOKEN)
 python3 -m reviewbot curate --pages 2 --target 18     # scan, select, freeze + ingest the sequence
 python3 -m reviewbot memcheck                        # is the memory store provisioned and usable?
+python3 -m reviewbot beats --pr 4114 --add recurring_bug --gold   # assign a beat / gold flag
 python3 -m reviewbot dataset validate|table|summary  # check/describe the frozen sequence
 python3 -m reviewbot run <run-id> --checkout ../redis-py   # execute the sequence (needs keys)
 python3 -m reviewbot report runs/<run-id>            # headline numbers + summary.json
@@ -76,6 +77,12 @@ The accounting layer is not bookkeeping around the experiment, it *is* the exper
 | [reviewbot/runner.py](reviewbot/runner.py) | Sequential execution, and the **memory agent runs first on every PR** — both agents share one cache entry, so the second to run free-rides on the other's cache write; putting memory first aims that bias against the thesis. |
 
 `data/sequence.example.json` is the manifest template; it deliberately fails `dataset validate` until real PR numbers and a pinned SHA replace the placeholders. `data/gold/README.md` documents the label format.
+
+## The frozen dataset
+
+19 PRs in `data/sequence.json`, all ingested and cached; 7 hand-labelled in `data/gold/`. Beats, evidence, and caveats: [docs/sequence-beats.md](docs/sequence-beats.md). `tests/test_frozen_dataset.py` guards the sequence and labels against drift (a gold-flagged PR with no label file, a trap beat with no `must_not_flag` item, a trap file that only one PR touches, labels claiming confirmed provenance).
+
+Two things not to redo from an older draft: **`README.md` is not convention-change evidence** (a version-badge edit auto-tagged three PRs with a fake invalidation beat before this was narrowed to `CONTRIBUTING.md` + `specs/redis_commands_guide.md`), and the **gold labels are `CANDIDATE`** — written by Claude, which is the same model family under evaluation, so they need a human pass before any quality number is quoted.
 
 ## Verified against the live services
 

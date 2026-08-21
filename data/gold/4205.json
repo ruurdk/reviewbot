@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "category": "concurrency",
+      "description": "reads of shared HIMPORT state are not guarded by lock(), so a multi-threaded caller can read stale data",
+      "file": "redis/himport.py",
+      "id": "d1",
+      "kind": "defect",
+      "line": 338,
+      "note": "Reviewer: 'Reads also should be guarded with lock(). In multi-threaded environment we may end up reading stale data.' SECOND instance of the recurring class -- unguarded access to shared mutable state, in a different module.",
+      "severity": "major"
+    }
+  ],
+  "labeller": "claude-opus-5 (CANDIDATE -- needs human confirmation, see docs/sequence-beats.md)",
+  "note": "recurring_bug beat, second instance (ordinal 18). Episodic recall should fire here from the ordinal-15 finding.",
+  "pr_number": 4205
+}

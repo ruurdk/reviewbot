@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "category": "concurrency",
+      "description": "RLock (rather than a non-reentrant Lock) guarding listener registration",
+      "file": "redis/event.py",
+      "id": "t1",
+      "kind": "must_not_flag",
+      "line": 118,
+      "note": "Maintainer rejected an automated reviewer's finding here verbatim: the RLock is a deliberate tradeoff against deadlock from weakref.finalize re-entry; a non-reentrant Lock hard-hangs the process under the same trigger, and the lost-update window is a self-recovering, bounded no-op. Ground truth for a false positive, stated by the people who own the code.",
+      "severity": ""
+    }
+  ],
+  "labeller": "claude-opus-5 (CANDIDATE -- needs human confirmation, see docs/sequence-beats.md)",
+  "note": "Documented false positive: a review bot flagged it, the maintainer explained why it is correct.",
+  "pr_number": 4044
+}

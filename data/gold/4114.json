@@ -1,0 +1,37 @@
+{
+  "items": [
+    {
+      "category": "resource-leak",
+      "description": "_scheduled_tasks are not cancelled on pool/client close, leaving the temporary MOVING configuration applied to new and existing connections",
+      "file": "redis/asyncio/maint_notifications.py",
+      "id": "d1",
+      "kind": "defect",
+      "line": 218,
+      "note": "Reviewer: '_scheduled_tasks aren't cancelled on pool/client disconnect'. Author agreed cancel belongs on close (not disconnect) and added the logic. FIRST instance of the recurring class.",
+      "severity": "major"
+    },
+    {
+      "category": "concurrency",
+      "description": "async BlockingConnectionPool lacks the maintenance-mode guard the sync implementation has, so connections are created/released while MOVING is processed",
+      "file": "redis/asyncio/maint_notifications.py",
+      "id": "d2",
+      "kind": "defect",
+      "line": null,
+      "note": "Reviewer noted the sync/async asymmetry explicitly.",
+      "severity": "major"
+    },
+    {
+      "category": "concurrency",
+      "description": "the pool lock must be held across `await connection.disconnect()`; without it the connection is in neither _in_use_connections nor _available_connections while the await is suspended",
+      "file": "redis/asyncio/connection.py",
+      "id": "d3",
+      "kind": "defect",
+      "line": null,
+      "note": "Author's own analysis after a reviewer catch: 'Good catch. Fixed it.'",
+      "severity": "major"
+    }
+  ],
+  "labeller": "claude-opus-5 (CANDIDATE -- needs human confirmation, see docs/sequence-beats.md)",
+  "note": "recurring_bug beat, first instance (ordinal 15): async lifecycle cleanup and locking around shared pool state.",
+  "pr_number": 4114
+}

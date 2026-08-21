@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "category": "resource-leak",
+      "description": "the same 'revert not covered on disconnect' concern, re-raised because this PR touches the same file again",
+      "file": "redis/asyncio/maint_notifications.py",
+      "id": "t1",
+      "kind": "must_not_flag",
+      "line": null,
+      "note": "No human comment raised it here. The trap re-fires by construction: a memoryless reviewer sees the same code shape and flags it again, while a reviewer that recorded the ordinal-16 rejection should stay quiet. This label is the trap's recurrence, so treat a finding here as a false positive.",
+      "severity": ""
+    }
+  ],
+  "labeller": "claude-opus-5 (CANDIDATE -- needs human confirmation, see docs/sequence-beats.md)",
+  "note": "false_positive_trap beat, recurrence (ordinal 17). This is the key narrative beat: the baseline should re-flag what the maintainers already rejected.",
+  "pr_number": 4177
+}

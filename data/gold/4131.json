@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "category": "resource-leak",
+      "description": "state revert appearing to be missing on disconnect in the async path",
+      "file": "redis/asyncio/maint_notifications.py",
+      "id": "t1",
+      "kind": "must_not_flag",
+      "line": 548,
+      "note": "Maintainer verdict: 'Not valid - the revert is covered via disconnect - for async all connections in all nodes are marked for disconnect during which the state is reset', with a new unit test added to prove it. This is the SAME CLASS as the real defect at ordinal 15, in the same file -- which is exactly the discrimination the memory agent has to get right: remember the real one, and remember that this one was ruled invalid.",
+      "severity": ""
+    }
+  ],
+  "labeller": "claude-opus-5 (CANDIDATE -- needs human confirmation, see docs/sequence-beats.md)",
+  "note": "false_positive_trap beat, primary instance (ordinal 16).",
+  "pr_number": 4131
+}

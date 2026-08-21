@@ -36,7 +36,14 @@ DEFAULT_SPINE = [
     "redis/asyncio/cluster.py",
     "redis/commands/core.py",
 ]
-DEFAULT_STYLE_GUIDE = ["CONTRIBUTING.md", "docs/CONTRIBUTING.md", "README.md"]
+# Files whose edits count as a *convention* change for beat detection. README is
+# deliberately excluded: a version bump or CI-badge edit touches it without
+# changing any rule a reviewer applies, and auto-tagging those as the
+# convention-change beat would put a fake invalidation event in the sequence.
+DEFAULT_STYLE_GUIDE = ["CONTRIBUTING.md", "docs/CONTRIBUTING.md", "specs/redis_commands_guide.md"]
+
+# Read as repo conventions by both agents, but not treated as beat evidence.
+DEFAULT_CONVENTION_DOCS = ["CONTRIBUTING.md", "README.md"]
 
 
 def _recurrence(file_lists: list[list[str]]) -> float:
@@ -244,3 +251,48 @@ def report(selected: Seq[Candidate], stats: dict[str, Any], spine: Seq[str]) -> 
             "  the real repo -- quote both.",
         ]
     return "\n".join(lines)
+
+
+def splice(
+    sequence: Sequence,
+    candidate: Candidate,
+    merged_at_by_number: dict[int, str],
+    *,
+    beats: Seq[str] = (),
+) -> Sequence:
+    """Insert one PR into an existing sequence in chronological position.
+
+    Used for a beat the selection rule cannot find on its own -- the
+    convention-change PR edits the style guide, which is not a spine module, so
+    it never survives step 2. Splicing it in explicitly is honest as long as the
+    addition is disclosed, which is what the entry's `note` is for.
+
+    Ordinals are renumbered, so callers must re-key anything held by ordinal.
+    """
+    rows = [
+        (merged_at_by_number.get(e.pr_number, ""), e) for e in sequence.entries
+    ]
+    new_entry = SequenceEntry(
+        ordinal=0,
+        pr_number=candidate.number,
+        beats=list(beats),
+        gold_labeled=False,
+        note=(
+            f"{candidate.title[:90]} | +/-{candidate.diff_size} in "
+            f"{candidate.n_files} files | spliced in for the "
+            f"{', '.join(beats) or 'sequence'} beat: edits the style guide, which "
+            "the spine-module rule cannot select for"
+        ),
+    )
+    rows.append((candidate.merged_at, new_entry))
+    rows.sort(key=lambda r: r[0])
+    for ordinal, (_, entry) in enumerate(rows, start=1):
+        entry.ordinal = ordinal
+    return Sequence(
+        repo=sequence.repo,
+        entries=[e for _, e in rows],
+        spine=list(sequence.spine),
+        style_guide_paths=list(sequence.style_guide_paths),
+        frozen_at_sha=sequence.frozen_at_sha,
+        selection_rule=sequence.selection_rule,
+    )

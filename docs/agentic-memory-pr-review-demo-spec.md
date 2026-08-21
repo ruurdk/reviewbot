@@ -180,7 +180,9 @@ Frozen at `7021617890d4` — the base commit of the first PR, so the primer read
 
 **Module recurrence is 100% both before and after trimming.** The trim step prefers PRs that revisit an already-seen module, which would normally make the selected figure a curatorial artefact — but the untrimmed above-median pool recurs just as much, so recurrence here is a property of the real repo rather than of the selection. Quote both numbers; the second is the one that answers "did you rig it?".
 
-Two beats remain unassigned: the recurring-bug pattern and the false-positive trap both require reading diffs, so `curate` leaves them empty rather than guessing. `dataset validate` fails until they are filled in.
+**All three beats are now assigned from the merged human review**, with the evidence trail in [sequence-beats.md](sequence-beats.md). The load-bearing find: the false-positive trap did not have to be manufactured. redis-py's history contains maintainers rejecting automated-review findings with reasons — at ordinal 16, *"Not valid — the revert is covered via disconnect"*, on the same file and the same class as a **real** defect at ordinal 15. So the trap tests something sharper than "does the agent repeat itself": the memory agent must remember that one instance of a class was real and another was ruled invalid.
+
+The convention-change PR had to be spliced in (#4030 edits `CONTRIBUTING.md` and creates `specs/redis_commands_guide.md`, and the style guide is not a spine module, so the selection rule could never pick it). The splice is disclosed in the entry note. It bites because ordinals 8–10 all add or remove command APIs *after* that date, while the primer reads the frozen SHA and never sees the new guide.
 
 The sequence must deliberately include:
 - **Repeated modules** — several PRs touching the same files, so semantic memory gets reused. Use the connection/cluster spine.
@@ -249,6 +251,11 @@ Sparse human review in redis-py (§6) rules out a proxy-only gold standard, and 
 
 - **Proxy across the whole sequence.** Score each agent's comments for agreement with the merged PR's actual human review comments. Cheap, already in the ingested data, and gives full-sequence coverage of precision-like signal.
 - **Hand-labeled gold set on a 5–8 PR subset**, chosen to include *every* beat PR: the recurring-bug-pattern PRs, the false-positive trap and its subsequent touches, and the convention-change PR. These are the PRs the narrative rests on and the only place false-positive rate can be stated rigorously.
+
+**The current labels are `CANDIDATE`, and two independence caveats have to travel with them until a human confirms them:**
+
+- **Same-family bias.** They were written by Claude, and the reviewer under evaluation is Claude. A label set produced by the model being measured is not an independent standard, however well grounded in maintainer quotes.
+- **Partial dependence on the proxy.** The `defect` labels are derived from merged human comments — which is what the proxy scores against — so for those items the two metrics are not independent and must not be presented as corroborating each other. The `must_not_flag` items are free of this: nothing in the proxy rewards *not* commenting, which is why false-positive rate is the more informative half of the quality table.
 
 Report the two separately and never average them into one number. State the subset size and how it was chosen — a skeptical viewer will (correctly) weight the hand-labeled subset far more heavily, and the beat PRs are exactly the ones they'll want labeled.
 
