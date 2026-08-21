@@ -11,3 +11,8 @@ data/prs/
 # Run ledgers: the frozen run is committed deliberately, drafts are not.
 runs/*/
 !runs/frozen/
+
+# web app build output and deps
+web/node_modules/
+web/dist/
+web/dist-smoke/

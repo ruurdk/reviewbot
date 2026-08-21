@@ -359,6 +359,16 @@ An HTML chart is interactive by nature; ship it that way. Crosshair plus tooltip
 
 Type is **Geist / Geist Sans** with **Source Code Pro** for mono — the hero figure uses Geist, never a display or serif face. Spacing comes from the `space000`–`space800` scale. Light and dark share ramp *values*; the theme swaps which *step* each role uses, so dark mode is a selected set of steps rather than an inversion.
 
+#### Corrections after building against the installed packages
+
+Three claims in earlier drafts of this section were wrong. They were made from reading Storybook and are corrected here from the installed packages:
+
+- **There is no `Table` component** in `@redis-ui/components` 51.2.0 — only `TableHeading`, which is a plain styled `div` (`HTMLAttributes<HTMLDivElement>`, no sort props). The accounting view is therefore hand-built on semantic `<table>` markup, exactly like the charts. The library ships 56 components; `Gauge` remains the only visualization-adjacent one.
+- **`@redis-ui/styles` peer-depends on styled-components ^5**, not v6. Installing v6 fails resolution outright.
+- The rejected `primary` + `notice` pair is **CVD ΔE 1.7 (deutan) / 11.3 normal**, not the 1.0 / 13.3 quoted earlier — `notice400` is `#8b5cf6`, and the earlier figure came from a slightly different hex. The conclusion is unchanged and if anything firmer: it fails both the CVD gate and the normal-vision floor.
+
+Component APIs that had to be read rather than assumed (each was wrong first time, and the DOM smoke test caught each): `Typography` sizes are uppercase unions (`'XXL' | 'XL' | 'L' | 'M' | 'S' | 'XS'`) and render a `div`, so real headings need `as="h1"`; `Banner` takes `message` plus a variant from `informative | notice | danger | attention | success` (**no `warning`**); `Switch` uses `onCheckedChange`; `Tabs` is not a Radix-style `Root/List/Trigger` set.
+
 #### Validated color assignments
 
 Redis's chromatic ramps are **semantically named** — `success`, `danger`, `attention`, `notice`, `informative` are status families. Only `primary` (brand blue) and `discovery` (magenta) are status-neutral. That constraint drives the assignments below, and every pair was validated rather than chosen by eye. Surfaces used: `#ffffff` light, `secondary950 #091a23` dark.
@@ -367,8 +377,8 @@ Redis's chromatic ramps are **semantically named** — `success`, `danger`, `att
 
 | Option | Baseline | Memory agent | CVD ΔE | Normal ΔE |
 |---|---|---|---|---|
-| Emphasis *(recommended)* | `neutral700 #6d6e71` light / `neutral500 #a7a9ac` dark | `primary400 #0070f3` | 20.9 / 23.3 | 21.3 / 26.4 |
-| Two chromatic | `discovery400 #D90B78` | `primary400 #0070f3` | 20.5 | 34.2 |
+| Emphasis *(rejected: fails the dark-mode lightness band)* | `neutral700 #6d6e71` light / `neutral500 #a7a9ac` dark | `primary400 #0070f3` | 20.9 / 23.3 | 21.3 / 26.4 |
+| Two chromatic *(chosen)* | `discovery400 #D90B78` | `primary400 #0070f3` | 20.5 | 34.2 |
 
 Emphasis is recommended: the baseline is context and the memory agent is the intervention, so brand blue on gray reads correctly. It is also the conservative choice — graying the *high-cost* series understates the win rather than dramatizing it. The baseline stays fully drawn, labeled, and present in the table; nothing is hidden.
 
@@ -382,6 +392,12 @@ Emphasis is recommended: the baseline is context and the memory agent is the int
 Cache tiers (`input` / `cache_creation` / `cache_read`) are also ordered — by price multiplier — and take the same treatment with three steps.
 
 **Status colors stay reserved.** `success` / `danger` / `attention` / `notice` keep their semantic meaning for the quality-guardrail badges and pass/fail states, and are never reused as series identity.
+
+**Resolved by running the validator, not the port: two chromatic hues.** The emphasis pairing (gray baseline + brand blue) passes in light mode but **fails the dark-mode lightness band** — every redis-ui neutral light enough to read as a series line sits above the band, so there is no neutral step that works in dark mode. `discovery400 #D90B78` + `primary400 #0070f3` passes every check in **both** modes (CVD ΔE 20.5, normal 34.2), so series identity does not change between themes — which matters, because a reader who switches theme mid-talk should not have to re-learn the legend.
+
+The phase stack is graded as an **ordinal ramp**, not a categorical palette (the validator exports `validateOrdinal` for exactly this): running the categorical checks on a correct ramp fails it by design, since a ramp spans the lightness band and its pale steps fall below the chroma floor. The light and dark ramps differ by one step at the pale end — `primary100 #8cc4fc` reads at only 1.79:1 against the light surface, under the 2:1 floor for the palest step, so light mode starts at `primary200`.
+
+`web/scripts/validate-series-colors.mjs` runs all six palettes (series x 2 modes, phase ramp x 2, cache ramp x 2) against the installed `@redis-ui/styles` and exits non-zero on any failure. Re-run it after any version bump; the numbers in this section are only valid for 21.2.0.
 
 #### The pairs we rejected, and why it matters
 
@@ -424,7 +440,7 @@ Re-run the validation if redis-ui's ramps change — the package is versioned, a
 5. **Memory layer** — retrieve and write phases against the managed API, scoped-search construction, write-visibility waiting. Start with `repo_convention` + `review_finding`; `review_policy` last (it is the Act 3 beat, so it lands late but matters most).
 6. **Dataset curation** — select and freeze the 15–25 PR sequence from `redis/redis-py` around the connection/cluster spine, cache the ingested PR data, hand-label the 5–8 PR gold subset, record the per-PR beat/recurrence/diff-size table.
 7. **Runs & analysis** — execute both agents, produce the cumulative chart and the quality table.
-8. **Narrative surface** — the replay page (§8a) built on redis-ui: hero figure, KPI row, cumulative line with crossover annotation, per-PR stacked breakdown, separate quality chart, redis-ui `Table` for the full accounting, and per-PR drill-down. Charts are hand-built against redis-ui theme tokens — the library ships no chart components. Colors are already validated; re-validate if the `@redis-ui/styles` version moves.
+8. **Narrative surface** — the replay page (§8a) built on redis-ui: hero figure, KPI row, cumulative line with crossover annotation, per-PR stacked breakdown, separate quality chart, a hand-built accounting table for the full detail, and per-PR drill-down. Charts are hand-built against redis-ui theme tokens — the library ships no chart components. Colors are already validated; re-validate if the `@redis-ui/styles` version moves.
 
 Suggested slice for a first end-to-end signal: harness + baseline + primer + `repo_convention`-only memory over a 10-PR sequence centred on one recurring module (`redis/connection.py` is the strongest candidate), using explicit client-side writes (§7a). The primer is in the first slice deliberately — it is the largest single lever, and a slice without it tests the weakest version of the thesis. That alone should show the curve bending and validates the accounting story before investing in the other two memory types.
 

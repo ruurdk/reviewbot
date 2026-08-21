@@ -1,0 +1,28 @@
+{
+  "name": "reviewbot-replay",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Replay page for the agentic-memory PR-review demo (spec 8a)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "tokens": "node scripts/dump-tokens.mjs",
+    "validate-colors": "node scripts/validate-series-colors.mjs",
+    "smoke": "vite build --config vite.smoke.config.js && node scripts/smoke.mjs",
+    "check": "npm run validate-colors && npm run smoke"
+  },
+  "dependencies": {
+    "@redis-ui/components": "51.2.0",
+    "@redis-ui/styles": "21.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "styled-components": "^5.3.11"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^30.0.1",
+    "vite": "^6.0.7"
+  }
+}

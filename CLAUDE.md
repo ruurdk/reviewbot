@@ -78,6 +78,22 @@ The accounting layer is not bookkeeping around the experiment, it *is* the exper
 
 `data/sequence.example.json` is the manifest template; it deliberately fails `dataset validate` until real PR numbers and a pinned SHA replace the placeholders. `data/gold/README.md` documents the label format.
 
+## Replay page (web/)
+
+Built and verified: React + **styled-components v5** (`@redis-ui/styles` peer-depends on ^5, not v6), redis-ui shell, hand-built SVG charts. See [web/README.md](web/README.md).
+
+```bash
+cd web && npm install     # set npm_config_cache to a writable dir; ~/.npm is not writable here
+npm run check             # palette validation + DOM smoke test -- run this before committing web changes
+npm run dev
+```
+
+Corrections to earlier claims, from the installed packages: **there is no `Table` component** in `@redis-ui/components` 51.2.0 (only `TableHeading`, a styled `div` with no sort props), so the accounting table is hand-built too. `Typography` renders a `div` and needs `as="h1"` for a real heading; `Banner` has no `"warning"` variant (`informative|notice|danger|attention|success`) and takes `message`; `Switch` uses `onCheckedChange`; `Tabs` is not Radix-shaped.
+
+Series colours are **two chromatic hues** (`discovery400` + `primary400`), not the gray-plus-brand emphasis pairing recorded earlier — emphasis fails the dark-mode lightness band, because no redis-ui neutral light enough to read as a line sits inside it. The phase stack is graded with `validateOrdinal`, not the categorical checks.
+
+`npm run smoke` renders the page in jsdom and asserts 15 viewer-visible properties. It caught a hooks-order violation and three wrong component APIs that `vite build` accepted silently — do not delete it.
+
 ## The frozen dataset
 
 19 PRs in `data/sequence.json`, all ingested and cached; 7 hand-labelled in `data/gold/`. Beats, evidence, and caveats: [docs/sequence-beats.md](docs/sequence-beats.md). `tests/test_frozen_dataset.py` guards the sequence and labels against drift (a gold-flagged PR with no label file, a trap beat with no `must_not_flag` item, a trap file that only one PR touches, labels claiming confirmed provenance).

@@ -1,0 +1,300 @@
+[
+ {
+  "pr_ordinal": 1,
+  "pr_number": 4025,
+  "title": "RESP2 and RESP3 response unification",
+  "beats": [],
+  "gold_labeled": false,
+  "n_files": 48,
+  "py_files": 41,
+  "diff_size": 12217,
+  "human_comments": 19,
+  "modules": [
+   "redis/cluster.py",
+   "redis/commands/core.py"
+  ]
+ },
+ {
+  "pr_ordinal": 2,
+  "pr_number": 4031,
+  "title": "Changing the default RESP protocol configurations for Redis clients and connecti",
+  "beats": [],
+  "gold_labeled": false,
+  "n_files": 21,
+  "py_files": 17,
+  "diff_size": 375,
+  "human_comments": 0,
+  "modules": [
+   "redis/asyncio/cluster.py",
+   "redis/cluster.py",
+   "redis/connection.py"
+  ]
+ },
+ {
+  "pr_ordinal": 3,
+  "pr_number": 4030,
+  "title": "Added custom Claude command + XNACK command support",
+  "beats": [
+   "convention_change"
+  ],
+  "gold_labeled": true,
+  "n_files": 8,
+  "py_files": 3,
+  "diff_size": 525,
+  "human_comments": 18,
+  "modules": [
+   "redis/commands/core.py"
+  ]
+ },
+ {
+  "pr_ordinal": 4,
+  "pr_number": 4037,
+  "title": "Refactor ClusterPubSub to reuse NodesManager-managed connections. Refactor Clust",
+  "beats": [],
+  "gold_labeled": false,
+  "n_files": 8,
+  "py_files": 8,
+  "diff_size": 435,
+  "human_comments": 4,
+  "modules": [
+   "redis/asyncio/cluster.py",
+   "redis/cluster.py"
+  ]
+ },
+ {
+  "pr_ordinal": 5,
+  "pr_number": 4038,
+  "title": "Fix CROSSSLOT on sharded pubsub resubscription by grouping channels per slot",
+  "beats": [],
+  "gold_labeled": false,
+  "n_files": 7,
+  "py_files": 7,
+  "diff_size": 478,
+  "human_comments": 0,
+  "modules": [
+   "redis/asyncio/cluster.py",
+   "redis/cluster.py"
+  ]
+ },
+ {
+  "pr_ordinal": 6,
+  "pr_number": 4044,
+  "title": "Handle cluster slot migration in ClusterPubSub (shard subscription reconciliatio",
+  "beats": [],
+  "gold_labeled": true,
+  "n_files": 9,
+  "py_files": 8,
+  "diff_size": 2319,
+  "human_comments": 14,
+  "modules": [
+   "redis/asyncio/cluster.py",
+   "redis/cluster.py"
+  ]
+ },
+ {
+  "pr_ordinal": 7,
+  "pr_number": 4052,
+  "title": "Changing the default protocol used to RESP3 keeping the responses for default co",
+  "beats": [],
+  "gold_labeled": false,
+  "n_files": 78,
+  "py_files": 62,
+  "diff_size": 16921,
+  "human_comments": 21,
+  "modules": [
+   "redis/asyncio/cluster.py",
+   "redis/cluster.py",
+   "redis/commands/core.py",
+   "redis/connection.py"
+  ]
+ },
+ {
+  "pr_ordinal": 8,
+  "pr_number": 4059,
+  "title": "Removing the GCRA/rate limitter/ command support.",
+  "beats": [],
+  "gold_labeled": false,
+  "n_files": 6,
+  "py_files": 6,
+  "diff_size": 319,
+  "human_comments": 0,
+  "modules": [
+   "redis/commands/core.py"
+  ]
+ },
+ {
+  "pr_ordinal": 9,
+  "pr_number": 4054,
+  "title": "Updating hash commands type hints and jsonget return type hints",
+  "beats": [],
+  "gold_labeled": false,
+  "n_files": 8,
+  "py_files": 7,
+  "diff_size": 331,
+  "human_comments": 3,
+  "modules": [
+   "redis/commands/core.py",
+   "redis/connection.py"
+  ]
+ },
+ {
+  "pr_ordinal": 10,
+  "pr_number": 4067,
+  "title": "Adding support for new INCREX command",
+  "beats": [],
+  "gold_labeled": false,
+  "n_files": 6,
+  "py_files": 5,
+  "diff_size": 466,
+  "human_comments": 3,
+  "modules": [
+   "redis/commands/core.py"
+  ]
+ },
+ {
+  "pr_ordinal": 11,
+  "pr_number": 4055,
+  "title": "Added support for new array commands",
+  "beats": [],
+  "gold_labeled": false,
+  "n_files": 6,
+  "py_files": 5,
+  "diff_size": 1689,
+  "human_comments": 8,
+  "modules": [
+   "redis/commands/core.py"
+  ]
+ },
+ {
+  "pr_ordinal": 12,
+  "pr_number": 4068,
+  "title": "Add support for PubSub subscriptions with binary channel names and handlers",
+  "beats": [],
+  "gold_labeled": false,
+  "n_files": 13,
+  "py_files": 12,
+  "diff_size": 635,
+  "human_comments": 1,
+  "modules": [
+   "redis/asyncio/cluster.py",
+   "redis/cluster.py"
+  ]
+ },
+ {
+  "pr_ordinal": 13,
+  "pr_number": 4063,
+  "title": "Avoid zero-timeout async reads in hiredis connections readiness checks and repla",
+  "beats": [],
+  "gold_labeled": true,
+  "n_files": 11,
+  "py_files": 11,
+  "diff_size": 549,
+  "human_comments": 11,
+  "modules": [
+   "redis/connection.py"
+  ]
+ },
+ {
+  "pr_ordinal": 14,
+  "pr_number": 4082,
+  "title": "Updates in default connection and retry settings",
+  "beats": [],
+  "gold_labeled": false,
+  "n_files": 29,
+  "py_files": 27,
+  "diff_size": 1084,
+  "human_comments": 10,
+  "modules": [
+   "redis/asyncio/cluster.py",
+   "redis/cluster.py",
+   "redis/connection.py"
+  ]
+ },
+ {
+  "pr_ordinal": 15,
+  "pr_number": 4114,
+  "title": "Adding support in async standalone client for maintenance notifications",
+  "beats": [
+   "recurring_bug"
+  ],
+  "gold_labeled": true,
+  "n_files": 12,
+  "py_files": 12,
+  "diff_size": 3784,
+  "human_comments": 6,
+  "modules": [
+   "redis/connection.py"
+  ]
+ },
+ {
+  "pr_ordinal": 16,
+  "pr_number": 4131,
+  "title": "Adding SCH async cluster support",
+  "beats": [
+   "false_positive_trap"
+  ],
+  "gold_labeled": true,
+  "n_files": 12,
+  "py_files": 12,
+  "diff_size": 2283,
+  "human_comments": 11,
+  "modules": [
+   "redis/asyncio/cluster.py",
+   "redis/cluster.py",
+   "redis/connection.py"
+  ]
+ },
+ {
+  "pr_ordinal": 17,
+  "pr_number": 4177,
+  "title": "feat: add async maintenance-notifications support for standalone and cluster cli",
+  "beats": [
+   "false_positive_trap"
+  ],
+  "gold_labeled": true,
+  "n_files": 28,
+  "py_files": 27,
+  "diff_size": 10391,
+  "human_comments": 1,
+  "modules": [
+   "redis/asyncio/cluster.py",
+   "redis/cluster.py",
+   "redis/connection.py"
+  ]
+ },
+ {
+  "pr_ordinal": 18,
+  "pr_number": 4205,
+  "title": "feat: add client-side HIMPORT fieldset support for standalone and cluster client",
+  "beats": [
+   "recurring_bug"
+  ],
+  "gold_labeled": true,
+  "n_files": 33,
+  "py_files": 30,
+  "diff_size": 4590,
+  "human_comments": 18,
+  "modules": [
+   "redis/asyncio/cluster.py",
+   "redis/cluster.py",
+   "redis/commands/core.py",
+   "redis/connection.py"
+  ]
+ },
+ {
+  "pr_ordinal": 19,
+  "pr_number": 4272,
+  "title": "feat: decide client-side cache eligibility from command metadata",
+  "beats": [],
+  "gold_labeled": false,
+  "n_files": 23,
+  "py_files": 20,
+  "diff_size": 6821,
+  "human_comments": 9,
+  "modules": [
+   "redis/asyncio/cluster.py",
+   "redis/cluster.py",
+   "redis/connection.py"
+  ]
+ }
+]
