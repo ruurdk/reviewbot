@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 [docs/agentic-memory-pr-review-demo-spec.md](docs/agentic-memory-pr-review-demo-spec.md) is the source of truth for what this project is — read it before changing anything. Build order is spec §10; the harness (step 1) exists, steps 2–8 do not.
 
-Built: shared config with the confound guard, token accounting + ledger, Messages API client, the shared review loop, aggregation and the §7d repricing, GitHub ingestion with a frozen on-disk cache, the sequence/beat manifest and its validator, and a CLI — 70 tests. Not built yet: the memory client and store provisioning, the primer, the two agents, the curated sequence itself, the quality labeling, and the replay page.
+Built (steps 1, 3, 4, 5, and the offline half of 6/7): the shared harness, both agents, the primer, the Agent Memory client, quality scoring, and the sequence runner — 119 tests, none of which need network or credentials.
+
+Not built: the redis-ui replay page (§10 step 8 — blocked, no node/npm here), `review_policy` memories (spec says procedural last), store provisioning on Redis Cloud, and the curated sequence itself plus its gold labels (both need `GITHUB_TOKEN`). Not built yet: the memory client and store provisioning, the primer, the two agents, the curated sequence itself, the quality labeling, and the replay page.
 
 ## Stack: Python 3.12, standard library only
 
@@ -28,10 +30,28 @@ python3 -m unittest tests.test_analysis.TestBreakeven.test_memory_loses_early_an
 python3 -m reviewbot doctor                          # env + config fingerprint
 python3 -m reviewbot ingest --prs 3001,3002          # fetch PRs into data/prs (needs GITHUB_TOKEN)
 python3 -m reviewbot dataset validate|table|summary  # check/describe the frozen sequence
+python3 -m reviewbot run <run-id> --checkout ../redis-py   # execute the sequence (needs keys)
 python3 -m reviewbot report runs/<run-id>            # headline numbers + summary.json
 ```
 
-Tests use `unittest` with injected transports — they never touch the network, so they run without `ANTHROPIC_API_KEY` or `GITHUB_TOKEN`. Keep it that way: a test that needs a key is a test nobody runs. There is no linter or formatter available; match the surrounding style by hand.
+`run --checkout <path>` reads source from a local redis-py clone via `git show <sha>:<path>`, so only the PR *metadata* needs a GitHub token, not the file contents.
+
+Tests use `unittest` with injected transports — they never touch the network, so they run without any credentials at all. Keep it that way: a test that needs a key is a test nobody runs. There is no linter or formatter available; match the surrounding style by hand.
+
+## Credentials
+
+`cp .env.example .env`, fill it in, then `python3 -m reviewbot doctor`. [.env.example](.env.example) documents every variable, what breaks without it, and where to get it; `.env` is gitignored and a test asserts both facts. [reviewbot/env.py](reviewbot/env.py) loads it at CLI startup and **never overrides an already-set variable**, so an exported shell value or a one-off `KEY=... python3 -m reviewbot ...` wins over the file.
+
+| Variable | Needed by |
+|---|---|
+| `ANTHROPIC_API_KEY` | `run` |
+| `GITHUB_TOKEN` | `ingest` |
+| `REDIS_AGENT_MEMORY_URL` / `_API_KEY` / `_STORE_ID` | `run` with the memory agent |
+| `REVIEWBOT_NAMESPACE` | optional default for `--namespace` (not a secret) |
+
+`run` checks for the keys its chosen `--agents` actually need and exits with the full list before making any call, rather than failing partway through a sequence. Add any new variable to `env.REQUIRED_BY` — `doctor` and the example-file coverage test both read from it.
+
+**The Iris base URL and auth header are the one inferred part of the stack.** The published Agent Memory OpenAPI declares no `servers` block and no `securitySchemes`, so `memory.py` sends `Authorization: Bearer` against `{URL}/v1/stores/{id}/...` on inference. Verify both against the Iris console before the first real run; `_headers()` and `_url()` are deliberately the only places that know.
 
 ## Code layout and the invariants each file enforces
 
@@ -47,7 +67,20 @@ The accounting layer is not bookkeeping around the experiment, it *is* the exper
 | [reviewbot/github.py](reviewbot/github.py) | `GITHUB_TOKEN` required (not optional); every response cached by URL; file reads take a pinned SHA, never a branch. Bot comments flagged so the proxy metric can exclude them. |
 | [reviewbot/dataset.py](reviewbot/dataset.py) | `validate()` fails on a missing beat, a beat with no gold label, a gold subset outside 5–8, an unpinned SHA, or an empty selection rule. `disclosure_table()` computes recurrence from the data instead of asserting it. |
 
-`data/sequence.example.json` is the manifest template; it deliberately fails `dataset validate` until real PR numbers and a pinned SHA replace the placeholders.
+| [reviewbot/repo.py](reviewbot/repo.py) | Source reads always take a pinned SHA. `LocalSourceProvider` uses `git show <sha>:<path>` so a dirty working tree cannot silently change the frozen dataset; it records `fell_back_to_worktree` when git is unavailable. Read counts are tracked, so "how much did the baseline read" is measured. |
+| [reviewbot/agents.py](reviewbot/agents.py) | The only difference between the agents is `volatile_blocks`. The primer runs one call per module (so re-priming one changed module doesn't re-pay for the rest) at `pr_ordinal=0`, and writes with deterministic ids for idempotence. Write-phase distillation is a measured model call; `distill_writes=False` gives a zero-model-token variant. Chronology rides in `attributes.pr_ordinal` because `createdAt` is server-assigned. |
+| [reviewbot/memory.py](reviewbot/memory.py) | Enforces the four Agent Memory constraints that silently corrupt runs: the `^[a-zA-Z0-9-]+$` id/namespace pattern, bulk-create `errors` (a 200 can still mean half the writes failed), `filterOp: all` + `module: {in: […]}` for retrieval, and `eq`-not-`ne` namespace isolation. `wait_for_visibility()` polls for eventual consistency and logs the wait as excluded from latency. |
+| [reviewbot/quality.py](reviewbot/quality.py) | Two scores that are never averaged. Gold labels carry `must_not_flag` items, which is what makes the false-positive trap measurable. Blind PRs (no human comments) are excluded from proxy ratios rather than scored zero. |
+| [reviewbot/runner.py](reviewbot/runner.py) | Sequential execution, and the **memory agent runs first on every PR** — both agents share one cache entry, so the second to run free-rides on the other's cache write; putting memory first aims that bias against the thesis. |
+
+`data/sequence.example.json` is the manifest template; it deliberately fails `dataset validate` until real PR numbers and a pinned SHA replace the placeholders. `data/gold/README.md` documents the label format.
+
+## Two spec corrections found while building
+
+Both were verified against the saved Agent Memory OpenAPI and are now fixed in the spec — don't reintroduce them from memory of an older draft:
+
+- A namespace like `repo-x/run-3` is **rejected** by the service (pattern is dashes only). Use `repo-x-run-3`.
+- Retrieval must use `filterOp: all`, not `any`. With `any`, the namespace clause is OR-ed with the module clause, so a memory from another run touching the same module comes back — cross-run contamination that looks like working retrieval.
 
 ## What this project is
 

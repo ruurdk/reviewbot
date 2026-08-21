@@ -10,29 +10,34 @@ from pathlib import Path
 
 from . import analysis
 from .accounting import Ledger, load_records
+from .agents import BaselineAgent, MemoryAgent
+from .claude import ClaudeClient
 from .config import ModelConfig
 from .dataset import Sequence, disclosure_table, rows, summary as dataset_summary, validate
+from .env import DEFAULT_ENV_FILE, REQUIRED_BY, load_env
 from .github import GitHubClient, PRStore
+from .memory import AgentMemoryClient
+from .quality import load_gold_dir
+from .repo import GitHubSourceProvider, LocalSourceProvider, read_docs
+from .runner import SequenceRunner, render_report, save_report
 
 DEFAULT_SEQUENCE = "data/sequence.json"
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
     cfg = ModelConfig()
+    env_file = Path(args.env)
+    if env_file.exists():
+        print(f"  {env_file} found; keys taken from it: {', '.join(LOADED_ENV) or 'none (all already set in the shell)'}")
+    else:
+        print(f"  no {env_file} (copy .env.example to {env_file} -- see that file's header)")
+
     checks: list[tuple[bool, str]] = [
-        (sys.version_info >= (3, 11), f"python {sys.version.split()[0]} (need >= 3.11)"),
-        (
-            bool(os.environ.get("ANTHROPIC_API_KEY")),
-            "ANTHROPIC_API_KEY set (required: the harness reads first-party "
-            "usage rather than estimating)",
-        ),
-        (
-            bool(os.environ.get("GITHUB_TOKEN")),
-            "GITHUB_TOKEN set (required: unauthenticated ingestion hits the "
-            "60 req/hour limit)",
-        ),
-        (Path(DEFAULT_SEQUENCE).exists(), f"{DEFAULT_SEQUENCE} exists"),
+        (sys.version_info >= (3, 11), f"python {sys.version.split()[0]} (need >= 3.11)")
     ]
+    for key, needed_by in REQUIRED_BY.items():
+        checks.append((bool(os.environ.get(key)), f"{key} -- needed by: {', '.join(needed_by)}"))
+    checks.append((Path(args.sequence).exists(), f"{args.sequence} exists"))
     for ok, label in checks:
         print(f"  [{'ok ' if ok else 'MISSING'}] {label}")
     print()
@@ -130,11 +135,101 @@ def cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_run(args: argparse.Namespace) -> int:
+    """Execute the frozen sequence. Needs ANTHROPIC_API_KEY, and the memory
+    agent additionally needs the Iris store endpoint and key."""
+    sequence = Sequence.load(args.sequence)
+    store = PRStore(args.store)
+    problems = validate(sequence, store)
+    if problems and not args.force:
+        print("the dataset is not usable (pass --force to run anyway):", file=sys.stderr)
+        for p in problems:
+            print(f"  - {p}", file=sys.stderr)
+        return 1
+
+    config = ModelConfig(
+        effort=args.effort,
+        max_tokens=args.max_tokens,
+        enable_caching=not args.no_cache,
+        cache_ttl=args.cache_ttl,
+    )
+    provider = (
+        LocalSourceProvider(args.checkout)
+        if args.checkout
+        else GitHubSourceProvider(GitHubClient(args.cache), sequence.repo)
+    )
+    run_dir = Path(args.runs) / args.run_id
+    ledger = Ledger(run_dir, args.run_id)
+    conventions = read_docs(provider, sequence.style_guide_paths, sequence.frozen_at_sha or "HEAD")
+    if not conventions:
+        print(
+            f"warning: none of {sequence.style_guide_paths} were readable; both "
+            "agents will run without a conventions block",
+            file=sys.stderr,
+        )
+
+    wanted = {"baseline", "memory"} if args.agents == "both" else {args.agents}
+    needed = ["ANTHROPIC_API_KEY"]
+    if "memory" in wanted:
+        needed += [
+            "REDIS_AGENT_MEMORY_URL",
+            "REDIS_AGENT_MEMORY_API_KEY",
+            "REDIS_AGENT_MEMORY_STORE_ID",
+        ]
+    absent = [k for k in needed if not os.environ.get(k)] + (
+        [] if args.store_id or "memory" not in wanted else ["--store-id"]
+    )
+    if absent:
+        print(
+            "missing credentials: " + ", ".join(absent) + "\n"
+            "copy .env.example to .env and fill it in, then re-run "
+            "(python3 -m reviewbot doctor shows what is still unset)",
+            file=sys.stderr,
+        )
+        return 1
+    baseline = memory = None
+    if "baseline" in wanted:
+        baseline = BaselineAgent(
+            ClaudeClient(config, ledger), provider, conventions=conventions
+        )
+    if "memory" in wanted:
+        memory = MemoryAgent(
+            ClaudeClient(config, ledger),
+            AgentMemoryClient(
+                args.store_id,
+                namespace=args.namespace,
+                owner_id="memory-agent",
+                ledger=ledger,
+            ),
+            conventions=conventions,
+            retrieval_limit=args.retrieval_limit,
+            similarity_threshold=args.similarity_threshold,
+            distill_writes=not args.no_distill,
+        )
+
+    runner = SequenceRunner(
+        sequence=sequence,
+        store=store,
+        ledger=ledger,
+        provider=provider,
+        config=config,
+        baseline=baseline,
+        memory=memory,
+        gold=load_gold_dir(args.gold),
+    )
+    report = runner.run()
+    print(render_report(report))
+    print(f"\nwrote {save_report(report, run_dir)}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="reviewbot", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
 
     d = sub.add_parser("doctor", help="check the environment and print the config fingerprint")
+    d.add_argument("--env", default=DEFAULT_ENV_FILE)
+    d.add_argument("--sequence", default=DEFAULT_SEQUENCE)
     d.set_defaults(func=cmd_doctor)
 
     i = sub.add_parser("ingest", help="fetch PRs from GitHub into the on-disk store")
@@ -152,12 +247,51 @@ def build_parser() -> argparse.ArgumentParser:
     ds.add_argument("--store", default="data/prs")
     ds.set_defaults(func=cmd_dataset)
 
+    run = sub.add_parser("run", help="execute the frozen sequence for both agents")
+    run.add_argument("run_id")
+    run.add_argument("--sequence", default=DEFAULT_SEQUENCE)
+    run.add_argument("--store", default="data/prs")
+    run.add_argument("--cache", default="data/cache/github")
+    run.add_argument("--runs", default="runs")
+    run.add_argument("--gold", default="data/gold")
+    run.add_argument(
+        "--checkout",
+        default="",
+        help="path to a redis-py checkout; reads source at the pinned SHA via git "
+        "instead of the GitHub contents API",
+    )
+    run.add_argument("--agents", choices=["both", "baseline", "memory"], default="both")
+    run.add_argument(
+        "--namespace",
+        default=os.environ.get("REVIEWBOT_NAMESPACE", "redis-py-run-1"),
+        help="per-run memory namespace; dashes only (the service rejects slashes)",
+    )
+    run.add_argument(
+        "--store-id",
+        default=os.environ.get("REDIS_AGENT_MEMORY_STORE_ID", ""),
+        help="Agent Memory store id from Redis Iris (default: $REDIS_AGENT_MEMORY_STORE_ID)",
+    )
+    run.add_argument("--effort", default="xhigh", choices=["low", "medium", "high", "xhigh", "max"])
+    run.add_argument("--max-tokens", type=int, default=32000)
+    run.add_argument("--cache-ttl", default="5m", choices=["5m", "1h"])
+    run.add_argument("--no-cache", action="store_true", help="disable prompt caching on BOTH agents")
+    run.add_argument("--retrieval-limit", type=int, default=20)
+    run.add_argument("--similarity-threshold", type=float, default=None)
+    run.add_argument("--no-distill", action="store_true", help="write findings verbatim (zero write tokens)")
+    run.add_argument("--force", action="store_true", help="run even if the dataset does not validate")
+    run.set_defaults(func=cmd_run)
+
     r = sub.add_parser("report", help="aggregate a run's ledger into the headline numbers")
     r.add_argument("run", help="run directory containing calls.jsonl")
     r.set_defaults(func=cmd_report)
     return p
 
 
+LOADED_ENV: list[str] = []
+
+
 def main(argv: list[str] | None = None) -> int:
+    # Before parsing, so argument defaults that read the environment see it.
+    LOADED_ENV.extend(load_env())
     args = build_parser().parse_args(argv)
     return args.func(args)

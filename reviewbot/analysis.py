@@ -274,6 +274,33 @@ def cache_integrity(records: Iterable[CallRecord]) -> list[str]:
     return problems
 
 
+def shared_prefix_freeriding(records: Iterable[CallRecord]) -> dict[str, int]:
+    """Cache-read tokens an agent got on a prefix it never wrote itself.
+
+    Both agents send a byte-identical cacheable prefix (same system prompt, same
+    conventions block -- that identity is what makes the comparison clean), so
+    they share one cache entry. Whichever agent runs second on a given PR reads
+    a prefix the *other* agent paid to write. As-measured, that is a real
+    discount the second agent did not earn.
+
+    The runner therefore runs the memory agent first, so the free ride falls to
+    the baseline and the bias runs against the thesis rather than for it. This
+    function quantifies it either way, and the production-equivalent regime
+    prices it out entirely (its provenance is keyed per agent).
+    """
+    out: dict[str, int] = {}
+    written: dict[tuple[str, str], bool] = {}
+    for rec in sorted((r for r in records if r.billable), key=lambda r: r.seq):
+        if not rec.prefix_id:
+            continue
+        key = (rec.agent, rec.prefix_id)
+        if rec.usage.cache_creation_input_tokens:
+            written[key] = True
+        elif rec.usage.cache_read_input_tokens and not written.get(key):
+            out[rec.agent] = out.get(rec.agent, 0) + rec.usage.cache_read_input_tokens
+    return out
+
+
 def summary(records: Iterable[CallRecord]) -> dict[str, Any]:
     recs = list(records)
     table = per_pr(recs)
@@ -288,6 +315,7 @@ def summary(records: Iterable[CallRecord]) -> dict[str, Any]:
         },
         "primer": primer_amortization(recs),
         "cache_integrity": cache_integrity(recs),
+        "shared_prefix_freeriding": shared_prefix_freeriding(recs),
         "phases": list(PHASES),
     }
     for agent in agents:

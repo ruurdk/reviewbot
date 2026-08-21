@@ -140,7 +140,7 @@ class CallRecord:
     truncated: bool = False
 
     # memory_op fields (spec 7b)
-    memory_op: str | None = None  # search | create | update | delete | wait
+    memory_op: str | None = None  # search | create | update | delete | wait | measure
     memories_returned: int | None = None
     injected_tokens: int | None = None
     search_limit: int | None = None

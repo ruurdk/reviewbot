@@ -78,12 +78,14 @@ Three memory types, because they save tokens in different ways. Each becomes a *
 | **Procedural** | `review_policy` | How to review here: calibrated checklist, which suggestion classes this team accepts/rejects | Suppresses low-value comments and the review rounds they trigger |
 
 Conventions for the store, so retrieval can be scoped tightly:
-- **`namespace`** — one per repo per experiment run (e.g. `repo-x/run-3`). Gives a clean per-run reset and prevents cross-run contamination.
+- **`namespace`** — one per repo per experiment run (e.g. `repo-x-run-3`). Gives a clean per-run reset and prevents cross-run contamination. **The service validates `namespace` (and `id`) against `^[a-zA-Z0-9-]+$`**, so a slash-separated name like `repo-x/run-3` is rejected — dashes only. `memoryType` is the one field that permits underscores, so `repo_convention` is fine.
 - **`ownerId`** — the agent identity. Baseline never writes, so this is constant for the treatment agent.
 - **`topics`** — coarse routing: `convention`, `finding`, `policy`, plus a module tag.
 - **`attributes`** — the precise, filterable metadata: `module` (path prefix), `pr_ordinal` (position in the frozen sequence), `pr_number`, `finding_class` (for the recurring-pattern and false-positive beats), `convention_version` (for invalidation), `source` (`style-guide` / `human-correction` / `inferred`).
 
-Retrieval for a given PR is then a scoped search: text query built from the diff's touched modules and change summary, filtered to the run namespace with `attributes.module` in the PR's touched-module set, `filterOp: any`, and a `limit` tuned in §9 — not an unfiltered semantic sweep.
+Retrieval for a given PR is then a scoped search: text query built from the diff's touched modules and change summary, filtered to the run namespace with `attributes.module` in the PR's touched-module set, and a `limit` tuned in §9 — not an unfiltered semantic sweep.
+
+**Use `filterOp: all`, not `any`.** The conjunction is global: `any` ORs the namespace clause with the module clause, so a memory from *another run* that happens to touch the same module satisfies the filter and comes back. That is cross-run contamination which looks exactly like working retrieval. The module set is OR-ed *within* one clause instead — `attributes.module: {in: [...]}` — which keeps the namespace isolation strict. Relatedly, isolate with `eq`/`in` and never `ne`: the positive operators require the field to be present, while `ne` also matches records that have no namespace at all.
 
 ### 4e. The repo-knowledge primer: making repo understanding a one-time cost
 
@@ -236,6 +238,17 @@ Report both regimes from the same run:
 - **Production-equivalent** — the same context volume repriced with the baseline's cross-PR cache reads charged at full rate, on the grounds that a real PR cadence exceeds the maximum TTL. State the repricing rule explicitly so it can be checked.
 
 The honest headline is the as-measured chart, with production-equivalent shown alongside as the bound that a real cadence would produce. If memory wins on as-measured, the demo is safe; the second series shows how much bigger the real gap is.
+
+### 7e. Both agents share one cache entry, so run order matters
+
+The two agents send a byte-identical cacheable prefix — same system prompt, same conventions block — and that identity is exactly what makes the comparison clean (§4f). But it also means they share a single prompt-cache entry: whichever agent runs second on a given PR reads a prefix the other one paid to write, and as-measured that is a discount it did not earn.
+
+Two mitigations, both in the harness:
+
+- **Run the memory agent first on every PR.** The free ride then falls to the baseline, so the bias runs *against* the thesis. A skeptical audience will accept a conservative bias; it will not accept a convenient one.
+- **Quantify it.** The run report includes cache-read tokens each agent received on a prefix it never wrote, and the production-equivalent series prices them out entirely, since its cache provenance is tracked per agent.
+
+Runs are also strictly **sequential** — concurrent requests cannot share a cache entry, so a parallel run would report cache misses as context volume.
 
 ## 8. Demo narrative (what the viewer sees)
 
