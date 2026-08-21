@@ -2,7 +2,9 @@
 
 ## 1. Thesis
 
-A PR review agent without memory re-derives the same context on every pull request — repo conventions, architecture, past decisions, recurring bug patterns. That re-derivation is a recurring **input-token tax**. Agentic memory pays that tax once, distills it, and retrieves only the relevant slice per review. Over a sequence of PRs, cumulative token cost flattens while a memoryless baseline keeps paying full price.
+A PR review agent without memory re-derives the same context on every pull request — repo conventions, architecture, past decisions, recurring bug patterns. Before it can judge a single diff it has to rebuild its understanding of what the repo *is*, and it does that again on the next PR, and the next. That re-derivation is a recurring **input-token tax**, and it is the largest line item on the bill.
+
+Agentic memory converts it from a **per-PR cost into a per-repo cost**: pay once to distill the repo, then retrieve only the relevant slice per review. Over a sequence of PRs, cumulative cost flattens while a memoryless baseline keeps paying full price. Prompt caching cannot do this — its longest TTL is one hour, and no real PR cadence fits inside that (§5).
 
 The demo's job is to make that gap **visible, measurable, and honest** — including memory's warm-up cost, so the savings shown are *net*, not cherry-picked.
 
@@ -32,8 +34,9 @@ Two agents review the **same PR sequence** under identical models, prompts, and 
 On each PR it assembles context fresh: reads the diff, pulls the style guide / CONTRIBUTING doc, and reads the relevant source files it needs to understand the change. It produces review comments and logs token usage. It has no persistence between PRs and never contacts the memory service.
 
 ### 4b. Memory agent (treatment)
-Same review loop, plus a memory layer that does three things:
-- **Retrieve** relevant memories before assembling context, and skip re-fetching anything already summarized in memory.
+Same review loop, plus a **one-time primer** and a three-phase memory layer:
+- **Prime** (once per repo, before the sequence) — distill the repo's architecture and conventions into durable memories. See §4e; this is the mechanism that makes repo understanding a per-repo cost.
+- **Retrieve** relevant memories before assembling context, and skip re-fetching anything already captured in memory.
 - **Review** using retrieved memories as grounding.
 - **Write** new/updated memories after the review (newly learned conventions, decisions, issue patterns, reviewer feedback).
 
@@ -82,15 +85,54 @@ Conventions for the store, so retrieval can be scoped tightly:
 
 Retrieval for a given PR is then a scoped search: text query built from the diff's touched modules and change summary, filtered to the run namespace with `attributes.module` in the PR's touched-module set, `filterOp: any`, and a `limit` tuned in §9 — not an unfiltered semantic sweep.
 
-## 5. The "prompt caching" rebuttal (preempt this on a slide)
+### 4e. The repo-knowledge primer: making repo understanding a one-time cost
 
-A skeptic will say memory is just prompt caching. It isn't:
-- Prompt caching is **verbatim and ephemeral** — it caches exact token prefixes within a session/TTL.
-- Memory is **distilled, persistent, and semantically retrieved** — it carries forward learned facts and decisions across sessions and PRs, and retrieves the relevant slice rather than replaying a fixed prefix.
+Before a reviewer can judge a diff it has to know what the repo *is* — architecture, module boundaries, conventions, what `connection.py` is responsible for and how it relates to `cluster.py`. The baseline re-derives that on **every** PR: it re-reads the style guide, re-reads the modules the diff touches, re-infers the conventions. That re-derivation is the single largest recurring line item in the token bill, and it is almost entirely redundant — the answer barely changes between PR #3 and PR #17.
 
-They're complementary. If the environment supports prompt caching, enable it on **both** agents so the comparison isolates memory's contribution rather than conflating the two. Log cache-read vs cache-write vs uncached input tokens separately for both agents, so "the memory agent just got luckier with the cache" is answerable with data.
+**The primer turns that recurring cost into a one-time cost per repo.** It is a distinct phase, run once against the frozen repo state before the sequence starts:
 
-Related but distinct: Iris also includes **LangCache** (semantic response caching). It is deliberately **out of scope** here — mixing it in would conflate two different savings mechanisms in one chart. Name it on the slide as a separate, additive lever so the audience doesn't think we're double-counting.
+1. Read the style guide / CONTRIBUTING doc and the spine modules (`connection.py`, `cluster.py`, `asyncio/cluster.py`, `commands/core.py`).
+2. Distill them into `repo_convention` memories — architecture notes, module responsibilities, conventions, invariants — one record per durable fact, each tagged with `attributes.module` so per-PR retrieval can pull just the relevant slice.
+3. Write them with client-supplied ids, so re-priming the same repo is idempotent and a re-run reproduces the same record set exactly.
+
+Per-PR, the memory agent then retrieves the slice for the touched modules instead of re-reading source. Repo understanding is paid for once and read cheaply thereafter; the baseline keeps paying full price per PR. **That gap is the thing the demo measures.**
+
+Three disciplines keep this honest:
+
+- **The primer's tokens are the memory agent's tokens.** Log them under `phase: prime` and include them in the cumulative total. On the chart they are a visible upfront step, which *strengthens* Act 2 — the investment becomes a spike you can point at rather than a hand-wave.
+- **The baseline must never see primed output.** It re-derives per PR. That is the control condition, not a handicap.
+- **The primer creates a staleness surface.** Primed conventions are exactly what the style-guide PR invalidates, so §9's invalidation requirement now has real stakes: a primer whose conventions can't be updated is a reviewer working from a dead rulebook.
+
+Report the primer's amortization directly: primer cost ÷ number of PRs, alongside the per-PR saving. That single ratio is the "is this worth it" number a skeptical audience actually wants, and it makes the break-even PR count explicit rather than something they have to infer from a curve.
+
+### 4f. Claude API configuration (identical across both agents)
+
+The reviewer itself runs on the **Claude API** — that is what makes the token accounting first-party and exact: every call returns a `usage` object we read directly rather than estimating (§7).
+
+- **Model: `claude-opus-5`** ($5 / $25 per MTok input / output, 1M context). Code review is the workload it is strongest on, and its prompt-cache minimum is 512 tokens — half Opus 4.8's — so more of the memory payloads are cacheable at all.
+- **Thinking is on by default on `claude-opus-5`.** Omitting the parameter runs adaptive thinking; it is not off-by-default as on Opus 4.8. Thinking tokens are billed and counted, and `max_tokens` caps thinking *plus* response text together — size it with headroom or reviews truncate mid-finding.
+- **Effort:** start at `xhigh` (the recommended setting for coding and agentic work), then sweep down — `low` and `medium` are unusually strong on this model. Whatever is chosen, it must be **identical for both agents**, and stated on the methodology slide.
+- **Structured outputs, not prefill.** Get review findings as JSON via `output_config.format` with a JSON schema. Assistant-turn prefill returns a 400 on this model, and structured findings make the gold-set comparison (§7c) mechanical instead of a parsing exercise.
+- **Count tokens with `messages.count_tokens`, never a third-party tokenizer.** `tiktoken` is OpenAI's and undercounts Claude by ~15–20% on prose and considerably more on code — which is exactly what a diff is.
+
+Anything that differs between the two agents beyond the memory layer is a confound. That explicitly includes model id, effort, thinking configuration, `max_tokens`, the tool set, and the system prompt.
+
+## 5. The "prompt caching" rebuttal (now with a number)
+
+A skeptic will say memory is just prompt caching. The conceptual answer is that prompt caching is **verbatim and ephemeral** while memory is **distilled, persistent, and semantically retrieved** — but the decisive answer is arithmetic:
+
+**Prompt caching's maximum TTL is one hour.** The default is five minutes; the longest available is 1h, and it costs a 2x write premium to get it. No real PR cadence stays inside that window — PRs on redis-py arrive hours or days apart. So on PR #7, a caching-only reviewer has a cold cache and pays full price to re-read the style guide and the spine modules, exactly as it did on PR #1. Caching cannot make repo understanding a one-time cost per repo, because its unit of persistence is an hour, not a repo.
+
+Memory's unit of persistence is the repo. That is the whole difference, and §4e is the mechanism.
+
+They remain complementary, and the demo treats them as such: enable caching on **both** agents so the comparison isolates memory's contribution, and log `cache_creation_input_tokens`, `cache_read_input_tokens`, and `input_tokens` separately for both so "the memory agent just got luckier with the cache" is answerable with data rather than assertion.
+
+Two caching mechanics that will bite this harness specifically:
+
+- **Caches are model-scoped and prefix-matched.** Any byte change in the prefix invalidates everything after it, and render order is `tools` → `system` → `messages`. Keep the system prompt frozen and the tool list deterministically ordered; inject per-PR content *after* the last cache breakpoint. A timestamp or a PR id interpolated into the system prompt silently destroys caching for both agents — and if it lands in only one, it destroys the comparison.
+- **Concurrent requests cannot share a cache entry.** A cache becomes readable only once the first response starts streaming, so running the two agents (or several PRs) in parallel means each pays full price where a sequential run would have hit. Run the sequence sequentially, or accept and disclose that parallel runs inflate both agents' costs.
+
+Related but out of scope: Iris also includes **LangCache** (semantic response caching). Naming it on the slide as a separate, additive lever prevents the audience from thinking we are double-counting mechanisms in one chart.
 
 ## 6. Dataset / scenario (resolved: `redis/redis-py`)
 
@@ -122,21 +164,36 @@ Freeze the sequence and commit SHAs so runs are reproducible. Record, per PR: nu
 
 ## 7. Metrics & instrumentation
 
+Every Claude API response carries a `usage` object; read it directly rather than estimating. Four fields matter, and the first one is a trap:
+
+| Field | What it is | Priced at |
+|---|---|---|
+| `input_tokens` | **The uncached remainder only** — not the prompt size | 1x |
+| `cache_creation_input_tokens` | Prompt tokens written to cache this call | 1.25x (5m TTL) / 2x (1h) |
+| `cache_read_input_tokens` | Prompt tokens served from cache this call | ~0.1x |
+| `output_tokens` | Generated tokens, including billed thinking tokens | 1x |
+
+**Total prompt size = `input_tokens` + `cache_creation_input_tokens` + `cache_read_input_tokens`.** Reporting "input tokens per review" as `input_tokens` alone would be wrong in a way that flatters whichever agent happens to cache better — with caching enabled it measures cache misses, not context volume. So the spec defines two headline series and reports both:
+
+- **Context volume** — the full prompt size per review (the sum above). This is what "memory means the agent reads less" actually claims, and it is caching-independent.
+- **Billed cost** — the same tokens weighted by their price multipliers. This is what the invoice says.
+
 Primary:
-- **Input tokens per review** (where memory should shrink cost).
-- **Cumulative total tokens** across the sequence — this is the headline chart.
+- **Context volume per review**, and **billed cost per review**.
+- **Cumulative billed cost** across the sequence — the headline chart.
 
 Secondary:
-- Output tokens per review.
-- **Memory overhead** logged separately: write tokens + retrieval tokens. Savings are reported *net* of these.
-- Wall-clock latency per review — with the caveat in §9 that the memory agent pays network round-trips to a managed service that the baseline does not.
+- Output tokens per review, with thinking tokens called out (they are billed and non-trivial at `xhigh` effort).
+- **Memory overhead** logged separately: primer tokens (`phase: prime`), write tokens, retrieval tokens. Savings are reported *net* of all three.
+- Wall-clock latency per review — with the §9 caveat that the memory agent makes network calls the baseline does not.
+- **Primer amortization**: primer cost ÷ PR count, and the break-even PR number.
 
 Quality (mandatory guardrail — report even if unflattering):
-- Precision / recall of review comments against a human-labeled gold set for the sequence.
+- Precision / recall of review comments against the hand-labeled gold subset (§7c).
 - **False-positive rate** — expected to *drop* for the memory agent thanks to decision memory.
-- Human-preference or acceptance rate of comments, if you can get a reviewer to rate them blind.
+- Human-preference or acceptance rate of comments, if a reviewer can rate them blind.
 
-Instrument by tagging every model call with `{agent, pr_id, phase: retrieve|review|write}` so you can attribute every token.
+Instrument by tagging every model call with `{agent, pr_id, phase: prime|retrieve|review|write}` so every token is attributable. An untagged call is an unmeasurable one.
 
 ### 7a. The token-accounting boundary (the credibility crux)
 
@@ -167,19 +224,132 @@ Report the two separately and never average them into one number. State the subs
 
 Because 7 of 20 sampled PRs had zero inline human comments, the proxy has a known blind spot: it cannot distinguish "the agent said nothing useful" from "the humans said nothing either." Note that limitation where the proxy is reported.
 
+### 7d. Compressed replay makes the baseline look cheaper than it is
+
+The sequence replays 15-25 PRs in minutes. Real PRs arrive hours or days apart. With prompt caching enabled, that compression hands the **baseline** a cache-hit rate it would never see in production: its style-guide-and-spine prefix stays warm across consecutive PRs inside the 5-minute (or 1-hour) TTL, so it re-reads the same context at ~0.1x instead of 1x.
+
+This cuts *against* the thesis, which is why it belongs in the spec rather than in a footnote. A compressed replay **understates** memory's real-world advantage, and a reviewer who spots it will (correctly) discount the result unless we got there first.
+
+Report both regimes from the same run:
+
+- **As-measured** — actual billed cost, caches warm. The conservative number; memory still has to win here.
+- **Production-equivalent** — the same context volume repriced with the baseline's cross-PR cache reads charged at full rate, on the grounds that a real PR cadence exceeds the maximum TTL. State the repricing rule explicitly so it can be checked.
+
+The honest headline is the as-measured chart, with production-equivalent shown alongside as the bound that a real cadence would produce. If memory wins on as-measured, the demo is safe; the second series shows how much bigger the real gap is.
+
 ## 8. Demo narrative (what the viewer sees)
 
 Three acts.
 
 **Act 1 — The tax.** Run the baseline over the sequence. Show its cost-per-PR line staying flat and high; each PR re-reads the style guide and the same modules. Point at the repeated context in the logs.
 
-**Act 2 — The investment.** Run the memory agent. On PR #1–#2 it costs *more* (writing memories, no cache to draw on). Don't hide this — name it as the investment. Then watch per-PR cost fall as reused modules and recalled patterns start paying off.
+**Act 2 — The investment.** Run the memory agent. Show the primer (§4e) as an upfront bar *before* PR #1 — this is the one-time cost of understanding the repo, paid once. Then PR #1–#2 still cost more than baseline (memory writes, cold cache). Don't hide either; name them together as the investment. Then watch per-PR cost fall as primed conventions get retrieved instead of re-derived and recalled patterns start firing. Put the break-even PR number on the slide.
 
 **Act 3 — The false-positive loop (the money beat).** Take the intentional pattern. Baseline flags it → a human explains it's deliberate → baseline re-reviews on the next touch and **flags it again**, burning tokens on a settled question every time. The memory agent stores the human's correction once (as a `review_policy` memory with `source: human-correction`) and never re-flags it. This is the clean demonstration that memory saves tokens *and* improves quality simultaneously, and that the savings compound across the multi-turn human↔agent loop, not just within a single review.
 
 Because the correction is a stored record with a stable id, this act has a screenshot that lands: the retrieved `review_policy` memory shown next to the review that *didn't* fire.
 
 Close on the **cumulative cost chart**: baseline as a steep straight line, memory agent starting higher then bending toward a floor, with the crossover point and the widening gap annotated.
+
+### 8a. The narrative surface (resolved: web page, Redis-branded)
+
+**Surface: a web page that replays the frozen run.** Not a live run — the sequence and its commit SHAs are already frozen (§6), so replaying recorded output is honest provided the page says so, and it avoids the failure modes §9 already flags (preview-stage API, minutes-long turns at `xhigh`, rate limits). A demo that breaks live is worse than one that claims less.
+
+The page is the credibility artifact, not decoration. This audience's real question is "show me PR #7's breakdown," and the whole accounting apparatus in §7 exists so that question has an answer. **Every number on the page must be drillable to the per-call log that produced it.**
+
+**Styling: Redis brand tokens, supplied.** The token slots the page needs are listed at the end of this section — I will not invent Redis hex values, and the categorical order must be validated rather than chosen by eye (see the gate below).
+
+#### Forms — chosen by the data's job, before any color
+
+| Element | Form | Why this form |
+|---|---|---|
+| The headline number | **Hero figure** — cumulative net saving over the sequence, ≥48px. **Exactly one per view.** | A single value the view leads with; not a one-bar chart |
+| Supporting numbers | **KPI row of stat tiles**: break-even PR number · primer cost and its per-PR amortization · context-volume reduction · false-positive-rate delta | A handful of headline numbers is a stat row, never a grouped bar chart |
+| Cumulative cost | **Line chart**, two series (baseline, memory), crossover point annotated | Trend over time where telling two distinct series apart *is* the job |
+| Per-PR composition | **Stacked bar** per PR — faceted two ways behind a toggle: by phase (`prime` / `retrieve` / `review` / `write`) and by cache tier (`input` / `cache_creation` / `cache_read`) | Part-to-whole. Four phase segments is within the safe band for stacks but makes direct labels mandatory |
+| Quality | **A separate chart** — precision / recall / false-positive rate | See the hard rule below |
+| The full accounting | **A table**, always reachable | With this audience the table is not an accessibility afterthought, it is the evidence |
+
+**Hard rule: never put cost and quality on one chart.** A dual-axis chart (two y-scales) is the single most common charting mistake, and here it would also be a credibility own-goal — the one place a skeptic is most likely to suspect a rigged visual is the place where the flattering series shares an axis with an unrelated scale. Tokens and precision are different measures; they get separate charts, side by side.
+
+**The §7d dual regime is a toggle, not a second axis.** As-measured and production-equivalent are two states of the same chart on the same scale. Default to as-measured — the conservative number memory has to win on — with production-equivalent as an explicit, labeled switch.
+
+#### The three-act reveal
+
+The acts are **progressive disclosure over one cumulative chart**, not three separate charts and not an animation that withholds data:
+
+1. **Act 1** — baseline series only. Flat and high.
+2. **Act 2** — memory series draws in, primer shown as the upfront step before PR #1. Crossover annotation appears with the break-even PR number.
+3. **Act 3** — the false-positive beat: the stored `review_policy` record shown beside the review that didn't fire, with the baseline's repeated re-flagging cost called out on the same timeline.
+
+Two constraints on the reveal, both about not looking like a magic trick:
+
+- **A "show everything" control and the table view are reachable at any point.** A skeptic who wants to skip the choreography and read the raw numbers must be able to, immediately. A reveal that can only be watched front-to-back reads as showmanship.
+- **The reveal never changes the data or the axes** — only what is drawn. Axis ranges are fixed from the full dataset at load, so no series appears to grow because the scale moved under it.
+
+#### Interaction (default, not optional)
+
+An HTML chart is interactive by nature; ship it that way. Crosshair plus tooltip on the cumulative line; per-mark hover on the stacked bars surfacing that PR's four token fields and its phase attribution; hit targets larger than the marks. Filters — PR range, agent, regime — in a single row above the charts, never interleaved. Clicking any PR opens its per-call log: the drill-down is the point.
+
+#### Accessibility and honesty checks
+
+- Legend always present for two or more series, **plus** direct labels — identity is never carried by color alone.
+- Dark mode is a **selected** set of steps validated against the dark surface, not an automatic inversion of the light values.
+- Texture fill available for the full-CVD, print, and `forced-colors` cases.
+- Text stays in ink tokens; a colored mark beside a number carries identity. Values never wear their series color.
+- A 2px surface gap between stacked segments; thin marks; recessive grid and axes.
+- Label the page as a **recorded replay of the frozen run**, with the run's date and the commit SHAs, in the page chrome — not buried in a footnote.
+
+#### Design system: redis-ui
+
+**Source: [redis-ui](https://redislabsdev.github.io/redis-ui/)** — a Storybook-published React component library on styled-components. Packages: `@redis-ui/components` (v51.2.0) and `@redis-ui/styles` (v21.2.0).
+
+**It has no chart components.** Of 691 stories — 547 components, 98 table stories — the only visualization-adjacent component is `Gauge`. There is no line chart, bar chart, legend, or axis primitive. So the split is:
+
+- **redis-ui supplies the shell**: layout, typography, the `Table` (98 stories — the table view in §8a is a real component, not a bespoke one), filter controls, cards, badges, and the theme provider with its light/dark switching (`SwitchableModeThemeProvider`).
+- **The charts are built to the visualization method against redis-ui's theme tokens.** Nothing is invented; the tokens below are read from `@redis-ui/styles`.
+
+Type is **Geist / Geist Sans** with **Source Code Pro** for mono — the hero figure uses Geist, never a display or serif face. Spacing comes from the `space000`–`space800` scale. Light and dark share ramp *values*; the theme swaps which *step* each role uses, so dark mode is a selected set of steps rather than an inversion.
+
+#### Validated color assignments
+
+Redis's chromatic ramps are **semantically named** — `success`, `danger`, `attention`, `notice`, `informative` are status families. Only `primary` (brand blue) and `discovery` (magenta) are status-neutral. That constraint drives the assignments below, and every pair was validated rather than chosen by eye. Surfaces used: `#ffffff` light, `secondary950 #091a23` dark.
+
+**Cumulative line — two series.** Two options, both passing every gate in both modes:
+
+| Option | Baseline | Memory agent | CVD ΔE | Normal ΔE |
+|---|---|---|---|---|
+| Emphasis *(recommended)* | `neutral700 #6d6e71` light / `neutral500 #a7a9ac` dark | `primary400 #0070f3` | 20.9 / 23.3 | 21.3 / 26.4 |
+| Two chromatic | `discovery400 #D90B78` | `primary400 #0070f3` | 20.5 | 34.2 |
+
+Emphasis is recommended: the baseline is context and the memory agent is the intervention, so brand blue on gray reads correctly. It is also the conservative choice — graying the *high-cost* series understates the win rather than dramatizing it. The baseline stays fully drawn, labeled, and present in the table; nothing is hidden.
+
+**Phase stack — an ordinal ramp, not four categorical hues.** `prime → retrieve → review → write` is an ordered pipeline, so a single-hue ramp is the right form *and* it sidesteps the status-name collision (a `danger`-red "write" segment would read as an error). Validated steps from the `primary` ramp:
+
+| Mode | Steps (light → dark) | Min adjacent ΔL | Lightest vs surface |
+|---|---|---|---|
+| Light | `#52a9ff` · `#0091ff` · `#0070f3` · `#064ea2` | 0.068 | 2.48:1 |
+| Dark | `#8cc4fc` · `#52a9ff` · `#0091ff` · `#0060d1` | 0.068 | 9.65:1 |
+
+Cache tiers (`input` / `cache_creation` / `cache_read`) are also ordered — by price multiplier — and take the same treatment with three steps.
+
+**Status colors stay reserved.** `success` / `danger` / `attention` / `notice` keep their semantic meaning for the quality-guardrail badges and pass/fail states, and are never reused as series identity.
+
+#### The pairs we rejected, and why it matters
+
+These are computed values, and several contradict what looks fine on a designer's screen:
+
+| Pair | CVD ΔE | Normal ΔE | Verdict |
+|---|---|---|---|
+| `primary` + `notice` (blue + violet) | **1.0** | 13.3 | Effectively identical to protan/deutan viewers |
+| `primary` + `informative` (two blues) | 8.4 | **9.1** | Fails even for full colour vision |
+| `attention` + `danger` | **2.8** | **9.9** | Fails both gates |
+| `discovery` + `danger` | 10.1 | **11.3** | Fails the normal-vision floor |
+| `success` + `danger` | 5.0 light / 8.6 dark | 34.1 | Mode-dependent — passes dark, fails light |
+
+Blue-and-violet is the trap worth naming: it is an obvious-looking pair that a colorblind viewer in the third row cannot separate at all. In a demo whose entire argument is "these numbers are trustworthy," a chart that some of the audience literally cannot read undercuts the thesis in the room. Threshold reference: CVD ΔE ≥ 8.0 target, normal-vision ΔE ≥ 15.0 hard floor, ≥ 3:1 contrast against surface, OKLCH lightness in band, both modes.
+
+Re-run the validation if redis-ui's ramps change — the package is versioned, and these values are pinned to `@redis-ui/styles` v21.2.0.
 
 ## 9. Risks & honest caveats (put these on a slide too — credibility)
 
@@ -191,6 +361,10 @@ Close on the **cumulative cost chart**: baseline as a steep straight line, memor
 - **Asynchronous extraction / eventual consistency.** Long-term memory extraction and promotion happen in the background, and the docs warn that recently written or deleted records may briefly not reflect in searches. A sequential PR replay that writes after PR N and searches at PR N+1 can therefore read a store that hasn't settled — which would understate memory's benefit for non-obvious reasons. The harness must explicitly wait for write visibility (poll the search or get-by-id until the record appears) between PRs, and that wait must be excluded from the latency metric.
 - **Time compression.** The demo replays 15–25 PRs in minutes, but a long-term memory's `createdAt` is server-assigned at write time and is not client-settable — so real PR dates cannot be backdated onto long-term records, and any day-scale time decay is inert in a compressed run. Carry chronology in `attributes` (`pr_ordinal`, `pr_number`, and the real merge date) and do not design any beat that depends on wall-clock aging. Session event `createdAt` *is* client-supplied, so session-tier chronology can be made faithful if a beat needs it.
 - **Latency is not apples-to-apples.** The memory agent makes network calls to a managed service; the baseline reads local files. Report latency, but do not headline it, and say why.
+- **Cache-warmth artifact.** Compressed replay gives the baseline unrealistic cache hits; report as-measured and production-equivalent (§7d).
+- **Prompt-cache fragility.** A timestamp, PR id, UUID, or non-deterministically serialized tool list anywhere in the prefix silently zeroes caching. Verify `cache_read_input_tokens` is non-zero across repeated calls before trusting any cost number; if it is zero, there is a silent invalidator, not a finding.
+- **Thinking tokens are real cost.** `claude-opus-5` thinks by default and those tokens are billed. A `max_tokens` sized for the answer alone will truncate reviews mid-finding. Both agents must run identical thinking and effort settings.
+- **Rate limits are model-scoped.** `claude-opus-5` draws on a separate bucket from the Opus 4.x pool; confirm the tier's limits before running the full sequence twice back to back.
 - **Preview-stage API.** Redis Agent Memory is in preview; features and behavior may change. Pin SDK versions, record the API surface used, and re-verify before showing the demo. A demo that breaks live is worse than a demo that claims less.
 
 ## 10. Build plan
@@ -198,16 +372,19 @@ Close on the **cumulative cost chart**: baseline as a steep straight line, memor
 1. **Harness** — PR ingestion, the shared review loop, and the token/quality accounting layer with per-call tagging (§7/§7a). Highest priority; both agents depend on it, and the accounting layer is what makes the result defensible.
 2. **Store provisioning** — create the Agent Memory service on Redis Cloud, register the three custom memory types (`repo_convention`, `review_finding`, `review_policy`) with their structured fields and extraction instructions, and script per-run namespace reset.
 3. **Baseline agent** — fresh-context assembly each PR.
-4. **Memory layer** — retrieve and write phases against the managed API, scoped-search construction, write-visibility waiting. Start with `repo_convention` + `review_finding`; `review_policy` last (it is the Act 3 beat, so it lands late but matters most).
-5. **Dataset curation** — select and freeze the 15–25 PR sequence from `redis/redis-py` around the connection/cluster spine, cache the ingested PR data, hand-label the 5–8 PR gold subset, record the per-PR beat/recurrence/diff-size table.
-6. **Runs & analysis** — execute both agents, produce the cumulative chart and the quality table.
-7. **Narrative surface** — the three-act walkthrough and the annotated chart.
+4. **Repo-knowledge primer** — the one-time distillation pass over the frozen redis-py state that writes `repo_convention` memories (§4e). This is the mechanism that converts per-PR repo understanding into a per-repo cost, so build it before the per-PR retrieve loop and measure it on its own.
+5. **Memory layer** — retrieve and write phases against the managed API, scoped-search construction, write-visibility waiting. Start with `repo_convention` + `review_finding`; `review_policy` last (it is the Act 3 beat, so it lands late but matters most).
+6. **Dataset curation** — select and freeze the 15–25 PR sequence from `redis/redis-py` around the connection/cluster spine, cache the ingested PR data, hand-label the 5–8 PR gold subset, record the per-PR beat/recurrence/diff-size table.
+7. **Runs & analysis** — execute both agents, produce the cumulative chart and the quality table.
+8. **Narrative surface** — the replay page (§8a) built on redis-ui: hero figure, KPI row, cumulative line with crossover annotation, per-PR stacked breakdown, separate quality chart, redis-ui `Table` for the full accounting, and per-PR drill-down. Charts are hand-built against redis-ui theme tokens — the library ships no chart components. Colors are already validated; re-validate if the `@redis-ui/styles` version moves.
 
-Suggested slice for a first end-to-end signal: harness + baseline + `repo_convention`-only memory over a 10-PR sequence centred on one recurring module (`redis/connection.py` is the strongest candidate), using explicit client-side writes (§7a). That alone should show the curve bending and validates both the thesis and the accounting story before investing in the other two memory types.
+Suggested slice for a first end-to-end signal: harness + baseline + primer + `repo_convention`-only memory over a 10-PR sequence centred on one recurring module (`redis/connection.py` is the strongest candidate), using explicit client-side writes (§7a). The primer is in the first slice deliberately — it is the largest single lever, and a slice without it tests the weakest version of the thesis. That alone should show the curve bending and validates the accounting story before investing in the other two memory types.
 
 ## 11. Success criteria
 
-The demo succeeds if, over the frozen sequence: cumulative tokens for the memory agent finish **meaningfully below** the baseline *net of memory overhead*, with the accounting boundary stated; review quality is **statistically no worse** (ideally better on false-positive rate); and a skeptical viewer leaves able to explain both *why* it works and *when it wouldn't* (low-recurrence, high-churn repos), and able to see where every counted token came from.
+The demo succeeds if, over the frozen sequence: cumulative billed tokens for the memory agent finish **meaningfully below** the baseline *net of primer, write, and retrieval overhead*, with the accounting boundary (§7a) and the caching regime (§7d) both stated; the **break-even PR number** is explicit rather than inferred from a curve; review quality is **statistically no worse** on the hand-labeled subset (ideally better on false-positive rate); and a skeptical viewer leaves able to explain both *why* it works and *when it wouldn't* (low-recurrence, high-churn repos), and able to see where every counted token came from.
+
+The one-sentence version a viewer should be able to repeat: **repo understanding is a per-repo cost, not a per-PR cost — and prompt caching can't make it one, because its longest TTL is an hour.**
 
 ---
 
@@ -219,7 +396,10 @@ Resolved:
 - ~~**Repo**~~ -> `redis/redis-py`, curated around the connection/cluster spine, drawn from the upper half of the diff-size distribution (§6).
 - ~~**Quality labeling**~~ -> hybrid: merged-human-comment proxy across the sequence, plus a hand-labeled gold set on a 5–8 PR subset covering every beat PR (§7c).
 - ~~**Extraction mode**~~ -> explicit client-side writes; automatic extraction off (§7a).
+- ~~**Presentation surface**~~ -> a Redis-branded web page replaying the frozen run, with drill-down to per-call accounting (§8a).
+- ~~**Visual styling**~~ -> redis-ui design system; series colors validated against colorblind and contrast gates rather than chosen by eye (§8a).
 
 Still open — both are internal verification questions, and neither blocks starting the harness:
 - **Service-side observability:** is extraction/summarization LLM token usage observable per store or per call? Only gates the §7a fallbacks, not the chosen path.
-- **Search modes:** are keyword and hybrid search reachable through the managed API and SDKs today, given the published OpenAPI search body exposes only `text` and `similarityThreshold`? Affects how the retrieve phase constructs queries (§4d) — semantic-only is workable, but worth knowing before tuning retrieval precision.
+- **Search modes:** are keyword and hybrid search reachable through the managed API and SDKs today, given the published OpenAPI search body exposes only `text` and `similarityThreshold`?
+- ~~**Design tokens**~~ -> resolved: redis-ui (`@redis-ui/components` v51.2.0 / `@redis-ui/styles` v21.2.0); validated color assignments in §8a. Affects how the retrieve phase constructs queries (§4d) — semantic-only is workable, but worth knowing before tuning retrieval precision.
