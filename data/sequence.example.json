@@ -1,0 +1,51 @@
+{
+  "repo": "redis/redis-py",
+  "frozen_at_sha": "REPLACE_WITH_PINNED_SHA",
+  "selection_rule": "drawn from the upper half of the diff-size distribution; the median redis-py PR touches 2 files, which is too small for context assembly to cost anything measurable",
+  "spine": [
+    "redis/connection.py",
+    "redis/cluster.py",
+    "redis/asyncio/cluster.py",
+    "redis/commands/core.py"
+  ],
+  "style_guide_paths": [
+    "CONTRIBUTING.md"
+  ],
+  "entries": [
+    {
+      "ordinal": 1,
+      "pr_number": 0,
+      "beats": [],
+      "gold_labeled": true,
+      "note": "cold start: memory pays the write cost and loses this PR"
+    },
+    {
+      "ordinal": 2,
+      "pr_number": 0,
+      "beats": ["recurring_bug"],
+      "gold_labeled": true,
+      "note": "first appearance of the recurring pattern"
+    },
+    {
+      "ordinal": 3,
+      "pr_number": 0,
+      "beats": ["recurring_bug"],
+      "gold_labeled": true,
+      "note": "episodic recall should fire here"
+    },
+    {
+      "ordinal": 4,
+      "pr_number": 0,
+      "beats": ["false_positive_trap"],
+      "gold_labeled": true,
+      "note": "the pattern the baseline re-flags every time it reappears"
+    },
+    {
+      "ordinal": 5,
+      "pr_number": 0,
+      "beats": ["convention_change"],
+      "gold_labeled": true,
+      "note": "edits the style guide; exercises memory invalidation"
+    }
+  ]
+}

@@ -4,9 +4,50 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository state
 
-Pre-implementation. As of this writing the repo has **no commits and no source code** — its entire content is one design document: [docs/agentic-memory-pr-review-demo-spec.md](docs/agentic-memory-pr-review-demo-spec.md). There is no build, test, or lint tooling yet, and no language/runtime has been chosen. Read the spec before doing anything else; it is the source of truth for what this project is.
+[docs/agentic-memory-pr-review-demo-spec.md](docs/agentic-memory-pr-review-demo-spec.md) is the source of truth for what this project is — read it before changing anything. Build order is spec §10; the harness (step 1) exists, steps 2–8 do not.
 
-When adding the first code, ask the user for the stack rather than assuming one, then record the real build/test/lint commands here (including how to run a single test).
+Built: shared config with the confound guard, token accounting + ledger, Messages API client, the shared review loop, aggregation and the §7d repricing, GitHub ingestion with a frozen on-disk cache, the sequence/beat manifest and its validator, and a CLI — 70 tests. Not built yet: the memory client and store provisioning, the primer, the two agents, the curated sequence itself, the quality labeling, and the replay page.
+
+## Stack: Python 3.12, standard library only
+
+**This machine has no package manager.** No pip, no ensurepip, no venv module, and `files.pythonhosted.org` is blocked by the sandbox — so nothing can be installed, including the `anthropic` and Redis Agent Memory SDKs the spec calls for. There is no node/npm either, which is why the redis-ui page cannot be built here yet.
+
+So the harness is stdlib-only, and every external surface is isolated behind one thin client that a SDK can replace without touching anything above it:
+
+- [reviewbot/claude.py](reviewbot/claude.py) — Messages API over `urllib` (streaming SSE, retries, `count_tokens`). Mirrors `client.messages.create()`; see its `SDK_SWAP` note.
+- [reviewbot/github.py](reviewbot/github.py) — GitHub REST over `urllib`, with the disk cache.
+
+Owning the serialisation is not purely a workaround: prompt caching is a byte-exact prefix match, and `claude.prefix_id()` hashes the exact cached prefix, which is what makes the cache assertions in §7d/§5 checkable rather than assumed. Keep that property if you swap in the SDK.
+
+## Commands
+
+```bash
+python3 -m unittest discover -s tests -t .           # all tests (no network, no API key)
+python3 -m unittest tests.test_analysis -v           # one module
+python3 -m unittest tests.test_analysis.TestBreakeven.test_memory_loses_early_and_wins_later
+python3 -m reviewbot doctor                          # env + config fingerprint
+python3 -m reviewbot ingest --prs 3001,3002          # fetch PRs into data/prs (needs GITHUB_TOKEN)
+python3 -m reviewbot dataset validate|table|summary  # check/describe the frozen sequence
+python3 -m reviewbot report runs/<run-id>            # headline numbers + summary.json
+```
+
+Tests use `unittest` with injected transports — they never touch the network, so they run without `ANTHROPIC_API_KEY` or `GITHUB_TOKEN`. Keep it that way: a test that needs a key is a test nobody runs. There is no linter or formatter available; match the surrounding style by hand.
+
+## Code layout and the invariants each file enforces
+
+The accounting layer is not bookkeeping around the experiment, it *is* the experiment — so the spec's rules are compiled into it rather than left to discipline:
+
+| File | Enforces |
+|---|---|
+| [reviewbot/config.py](reviewbot/config.py) | One `ModelConfig` for both agents. `fingerprint()` goes in every run manifest and `assert_comparable()` raises `ConfoundError` on a mismatch. Rejects `budget_tokens` and `thinking: disabled` at `xhigh`. Carries pricing and the per-model cache minimum. |
+| [reviewbot/accounting.py](reviewbot/accounting.py) | `Usage.context_volume` is the *sum* of the three input fields, so `input_tokens` can't be reported as prompt size. `CallRecord` requires `{agent, pr_id, pr_ordinal, phase}`. Memory ops are `billable=False` with `injected_tokens` as attribution only — adding them to a total double-counts. Ledger is append-only JSONL and resumes `seq`. |
+| [reviewbot/claude.py](reviewbot/claude.py) | Tagging is a required argument. `prefix_id()` hashes the prefix up to the last `cache_control` breakpoint; a repeat with zero `cache_read` raises a cache warning. Refusals and `max_tokens` truncation are surfaced, never silently logged as an empty review. |
+| [reviewbot/analysis.py](reviewbot/analysis.py) | The §7d repricing rule, stated in code: a cache read whose prefix was written under a *different* PR ordinal is charged at 1.0x, applied to **both** agents. `breakeven_ordinal()` ignores a crossing that reverses. `cache_integrity()` is the pre-flight before trusting any cost number. |
+| [reviewbot/review.py](reviewbot/review.py) | **One** frozen `SYSTEM_PROMPT` for both agents — it names the optional "Prior knowledge" section so its bytes don't change when memories are absent. Stable blocks (conventions) precede the breakpoint; per-PR source, memories, and the diff follow it. `Finding`/`FINDINGS_SCHEMA` make gold-set comparison mechanical, and `memories_used` is the retrieval-precision signal. |
+| [reviewbot/github.py](reviewbot/github.py) | `GITHUB_TOKEN` required (not optional); every response cached by URL; file reads take a pinned SHA, never a branch. Bot comments flagged so the proxy metric can exclude them. |
+| [reviewbot/dataset.py](reviewbot/dataset.py) | `validate()` fails on a missing beat, a beat with no gold label, a gold subset outside 5–8, an unpinned SHA, or an empty selection rule. `disclosure_table()` computes recurrence from the data instead of asserting it. |
+
+`data/sequence.example.json` is the manifest template; it deliberately fails `dataset validate` until real PR numbers and a pinned SHA replace the placeholders.
 
 ## What this project is
 
