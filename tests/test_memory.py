@@ -215,3 +215,34 @@ class TestMissingCredentials(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestAttributeEncoding(unittest.TestCase):
+    """The store declares pr_ordinal / convention_version as str (verified
+    against the live service). An int fails the whole create with
+    `400 attribute "x" has the wrong type ... (expected str)`."""
+
+    def test_ints_become_strings(self):
+        from reviewbot.memory import encode_attributes
+
+        self.assertEqual(encode_attributes({"pr_number": 4052})["pr_number"], "4052")
+
+    def test_ordinals_are_zero_padded_so_string_order_is_correct(self):
+        from reviewbot.memory import encode_attributes, ordinal_attr
+
+        self.assertEqual(ordinal_attr(9), "009")
+        self.assertEqual(ordinal_attr(10), "010")
+        self.assertLess(ordinal_attr(9), ordinal_attr(10))  # "9" < "10" would fail
+        self.assertEqual(encode_attributes({"pr_ordinal": 3})["pr_ordinal"], "003")
+
+    def test_lists_and_bools_are_encoded_too(self):
+        from reviewbot.memory import encode_attributes
+
+        out = encode_attributes({"evidence": [1, "two"], "active": True})
+        self.assertEqual(out["evidence"], ["1", "two"])
+        self.assertEqual(out["active"], "true")
+
+    def test_encoding_happens_on_the_wire_not_in_the_record(self):
+        record = conv("c-x", "text", "a.py", pr_ordinal=7)
+        self.assertEqual(record.attributes["pr_ordinal"], 7)  # readable in Python
+        self.assertEqual(record.to_create()["attributes"]["pr_ordinal"], "007")

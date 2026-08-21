@@ -198,9 +198,11 @@ class TestMemoryAgentLoop(unittest.TestCase):
         rec = service.records[outcome.written[0]]
         self.assertEqual(rec["memoryType"], REVIEW_FINDING)
         self.assertEqual(rec["attributes"]["finding_class"], "resource-leak")
-        # createdAt is server-assigned, so chronology rides in attributes.
-        self.assertEqual(rec["attributes"]["pr_ordinal"], 1)
-        self.assertEqual(rec["attributes"]["pr_number"], 3411)
+        # createdAt is server-assigned, so chronology rides in attributes -- as
+        # a zero-padded string, because the store declares these fields as str
+        # and a bare str(n) would sort "10" before "9".
+        self.assertEqual(rec["attributes"]["pr_ordinal"], "001")
+        self.assertEqual(rec["attributes"]["pr_number"], "3411")
 
     def test_undistilled_writes_cost_no_model_tokens(self):
         _, service, ledger, outcome = self._run(distill_writes=False)

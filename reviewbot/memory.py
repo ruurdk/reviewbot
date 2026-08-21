@@ -54,6 +54,41 @@ MAX_SEARCH_LIMIT = 100
 MAX_TOPICS = 50
 USER_AGENT = "reviewbot-demo-harness/0.1"
 
+# Width for zero-padded ordinal attributes. The store declares pr_ordinal and
+# convention_version as `str` (verified 2026-08-21), and a plain str(n) sorts
+# lexicographically -- "10" < "9" -- which would silently break any range
+# filter over sequence position. Zero-padding keeps string ordering correct.
+ORDINAL_WIDTH = 3
+
+
+def ordinal_attr(value: int) -> str:
+    """Encode a sequence position as a sortable string attribute."""
+    return f"{int(value):0{ORDINAL_WIDTH}d}"
+
+
+def encode_attributes(attrs: dict[str, Any]) -> dict[str, Any]:
+    """Coerce scalar attribute values to str.
+
+    The store validates each attribute against its registered field type, and a
+    mismatch fails the whole create with
+    `400 attribute "x" has the wrong type ... (expected str)`. Rather than
+    scatter str() calls through the agents, encoding happens once, here. Lists
+    are mapped element-wise; nested objects are passed through untouched.
+    """
+    out: dict[str, Any] = {}
+    for key, value in attrs.items():
+        if isinstance(value, bool):
+            out[key] = "true" if value else "false"
+        elif isinstance(value, int):
+            out[key] = ordinal_attr(value) if key.endswith("ordinal") else str(value)
+        elif isinstance(value, float):
+            out[key] = repr(value)
+        elif isinstance(value, (list, tuple)):
+            out[key] = [v if isinstance(v, str) else str(v) for v in value]
+        else:
+            out[key] = value
+    return out
+
 # Custom memory types registered on the store (spec 4d).
 REPO_CONVENTION = "repo_convention"
 REVIEW_FINDING = "review_finding"
@@ -175,7 +210,7 @@ class Memory:
         if self.topics:
             body["topics"] = list(self.topics)
         if self.attributes:
-            body["attributes"] = dict(self.attributes)
+            body["attributes"] = encode_attributes(self.attributes)
         return body
 
     @classmethod

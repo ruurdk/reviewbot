@@ -3,12 +3,32 @@
 Verified against the live preview service on 2026-08-21 with
 `python3 -m reviewbot memcheck`.
 
+**Status: provisioned and verified.** All three types are registered on the demo
+store, their fields are accepted, and the measured write→searchable lag is
+**0.33s**.
+
 **The memory agent cannot write anything until these three types exist.** An
 unregistered type fails *every* create with
 `400 memory type "repo_convention" is not registered on this store`, and there
 is no registration endpoint on the data plane — `POST /v1/stores/{id}/memory-types`
 404s, and `/v1/stores` answers 403 from a different host. So registration is a
 Redis Iris console / control-plane action, not something the harness can do.
+
+**Field types must match exactly, and a mismatch fails the entire create** —
+not just the offending attribute:
+
+```
+400 attribute "convention_version" has the wrong type for
+    memory type "repo_convention" (expected str)
+```
+
+The registered types declare their scalar fields as `str`, so the harness
+encodes attributes on the wire (`memory.encode_attributes`). Ordinals are
+**zero-padded to 3 digits** — `"010"`, not `"10"` — because a plain `str(n)`
+sorts `"10"` before `"9"` and would silently break any range filter over
+sequence position. Sending an extra field that the type does not declare is
+also fatal: `400 unknown attribute "module"`. `memcheck` distinguishes all three
+failure modes (unregistered / wrong type / unknown field) and names the field.
 
 Re-run `python3 -m reviewbot memcheck` after registering; it writes one probe
 record per type into the `harness-preflight` namespace, measures the
@@ -33,8 +53,8 @@ responsibilities, conventions, invariants. One durable fact per record.
 | `kind` | `str` | `architecture` / `convention` / `invariant` / `ownership`. |
 | `topic` | `str` | Short stable slug; part of the record id, so re-priming is idempotent. |
 | `source` | `str` | `style-guide` / `human-correction` / `inferred`. |
-| `convention_version` | `int` | Bumped by the convention-change beat; this is the invalidation surface. |
-| `pr_ordinal` | `int` | `0` for primed facts. Chronology lives here because `createdAt` is server-assigned and cannot be backdated. |
+| `convention_version` | `str` | Bumped by the convention-change beat; this is the invalidation surface. |
+| `pr_ordinal` | `str` | `"000"` for primed facts, zero-padded. Chronology lives here because `createdAt` is server-assigned and cannot be backdated. |
 
 ### `review_finding` — episodic memory
 
@@ -45,8 +65,8 @@ specific diff.
 |---|---|---|
 | `module` | `str` | Routing key, as above. |
 | `finding_class` | `str` | Groups recurrences; drives the recurring-bug and false-positive beats. |
-| `pr_ordinal` | `int` | Position in the frozen sequence. |
-| `pr_number` | `int` | The real PR number, for drill-down in the replay page. |
+| `pr_ordinal` | `str` | Position in the frozen sequence, zero-padded (`"003"`). |
+| `pr_number` | `str` | The real PR number, for drill-down in the replay page. |
 | `source` | `str` | `review` / `human-correction`. |
 
 ### `review_policy` — procedural memory
