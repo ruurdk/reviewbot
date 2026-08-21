@@ -35,6 +35,17 @@ class FakeMemoryService:
             return self._ok(handler(payload))
         if path.startswith("long-term-memory/") and path.endswith("/fields"):
             return self._patch_fields(path.split("/")[1], payload)
+        if method == "GET" and path == "health":
+            return self._ok(
+                {
+                    "status": "healthy",
+                    "features": {
+                        "long_term_memory": {"status": "healthy"},
+                        "session_memory": {"status": "healthy"},
+                        "store_db": {"status": "healthy"},
+                    },
+                }
+            )
         if method == "GET" and path.startswith("long-term-memory/"):
             return self._get(path.split("/", 1)[1])
         return 404, {}, b'{"message":"no route"}'

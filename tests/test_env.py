@@ -103,6 +103,18 @@ class TestExampleFile(unittest.TestCase):
         self.assertEqual(proc.returncode, 1, ".env.example must not be ignored")
 
 
+class TestHermeticity(unittest.TestCase):
+    def test_no_real_credentials_are_visible_to_tests(self):
+        """Regression guard. A populated .env once leaked into the test process
+        via an in-process CLI call, and two tests silently made live network
+        calls instead of failing closed."""
+        for key in REQUIRED_BY:
+            self.assertIsNone(
+                os.environ.get(key),
+                f"{key} is set during tests -- something loaded a real .env",
+            )
+
+
 class TestRunRefusesWithoutCredentials(unittest.TestCase):
     def test_run_names_every_missing_key_instead_of_failing_midway(self):
         env = {k: v for k, v in os.environ.items() if k not in REQUIRED_BY}

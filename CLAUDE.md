@@ -29,6 +29,8 @@ python3 -m unittest tests.test_analysis -v           # one module
 python3 -m unittest tests.test_analysis.TestBreakeven.test_memory_loses_early_and_wins_later
 python3 -m reviewbot doctor                          # env + config fingerprint
 python3 -m reviewbot ingest --prs 3001,3002          # fetch PRs into data/prs (needs GITHUB_TOKEN)
+python3 -m reviewbot curate --pages 2 --target 18     # scan, select, freeze + ingest the sequence
+python3 -m reviewbot memcheck                        # is the memory store provisioned and usable?
 python3 -m reviewbot dataset validate|table|summary  # check/describe the frozen sequence
 python3 -m reviewbot run <run-id> --checkout ../redis-py   # execute the sequence (needs keys)
 python3 -m reviewbot report runs/<run-id>            # headline numbers + summary.json
@@ -74,6 +76,16 @@ The accounting layer is not bookkeeping around the experiment, it *is* the exper
 | [reviewbot/runner.py](reviewbot/runner.py) | Sequential execution, and the **memory agent runs first on every PR** — both agents share one cache entry, so the second to run free-rides on the other's cache write; putting memory first aims that bias against the thesis. |
 
 `data/sequence.example.json` is the manifest template; it deliberately fails `dataset validate` until real PR numbers and a pinned SHA replace the placeholders. `data/gold/README.md` documents the label format.
+
+## Verified against the live services
+
+`memcheck` and `curate` have both been run for real. The findings are in the spec (§4c, §6) and [docs/store-provisioning.md](docs/store-provisioning.md); the two that will bite hardest:
+
+- **The store needs its three custom memory types registered before any write succeeds** — there is no data-plane endpoint for it, so it is a console action. `memcheck` reports exactly which types are missing.
+- **The search body silently ignores unknown fields.** A mistyped retrieval knob returns 200 with no error, so never assume a search parameter took effect because the call succeeded.
+- Requests must send an explicit `User-Agent`; Cloudflare 403s urllib's default with `error_code 1010`, which reads like an auth failure.
+
+Tests are hermetic and enforce it: [tests/__init__.py](tests/__init__.py) scrubs every credential from `os.environ` at import, and `main()` takes `env_file=None` so an in-process CLI call cannot load a real `.env`. A populated `.env` previously leaked into the suite and two tests made live network calls instead of failing closed.
 
 ## Two spec corrections found while building
 

@@ -1,0 +1,150 @@
+{
+  "entries": [
+    {
+      "beats": [],
+      "gold_labeled": false,
+      "note": "RESP2 and RESP3 response unification | +/-12217 in 48 files",
+      "ordinal": 1,
+      "pr_number": 4025
+    },
+    {
+      "beats": [
+        "convention_change"
+      ],
+      "gold_labeled": false,
+      "note": "Changing the default RESP protocol configurations for Redis clients and connections to 3 | +/-375 in 21 files | edits README.md",
+      "ordinal": 2,
+      "pr_number": 4031
+    },
+    {
+      "beats": [],
+      "gold_labeled": false,
+      "note": "Refactor ClusterPubSub to reuse NodesManager-managed connections. Refactor ClusterPubSub t | +/-435 in 8 files",
+      "ordinal": 3,
+      "pr_number": 4037
+    },
+    {
+      "beats": [],
+      "gold_labeled": false,
+      "note": "Fix CROSSSLOT on sharded pubsub resubscription by grouping channels per slot | +/-478 in 7 files",
+      "ordinal": 4,
+      "pr_number": 4038
+    },
+    {
+      "beats": [],
+      "gold_labeled": false,
+      "note": "Handle cluster slot migration in ClusterPubSub (shard subscription reconciliation) | +/-2319 in 9 files",
+      "ordinal": 5,
+      "pr_number": 4044
+    },
+    {
+      "beats": [
+        "convention_change"
+      ],
+      "gold_labeled": false,
+      "note": "Changing the default protocol used to RESP3 keeping the responses for default config compa | +/-16921 in 78 files | edits README.md",
+      "ordinal": 6,
+      "pr_number": 4052
+    },
+    {
+      "beats": [],
+      "gold_labeled": false,
+      "note": "Removing the GCRA/rate limitter/ command support. | +/-319 in 6 files",
+      "ordinal": 7,
+      "pr_number": 4059
+    },
+    {
+      "beats": [],
+      "gold_labeled": false,
+      "note": "Updating hash commands type hints and jsonget return type hints | +/-331 in 8 files",
+      "ordinal": 8,
+      "pr_number": 4054
+    },
+    {
+      "beats": [],
+      "gold_labeled": false,
+      "note": "Adding support for new INCREX command | +/-466 in 6 files",
+      "ordinal": 9,
+      "pr_number": 4067
+    },
+    {
+      "beats": [],
+      "gold_labeled": false,
+      "note": "Added support for new array commands | +/-1689 in 6 files",
+      "ordinal": 10,
+      "pr_number": 4055
+    },
+    {
+      "beats": [],
+      "gold_labeled": false,
+      "note": "Add support for PubSub subscriptions with binary channel names and handlers | +/-635 in 13 files",
+      "ordinal": 11,
+      "pr_number": 4068
+    },
+    {
+      "beats": [],
+      "gold_labeled": false,
+      "note": "Avoid zero-timeout async reads in hiredis connections readiness checks and replace async's | +/-549 in 11 files",
+      "ordinal": 12,
+      "pr_number": 4063
+    },
+    {
+      "beats": [],
+      "gold_labeled": false,
+      "note": "Updates in default connection and retry settings | +/-1084 in 29 files",
+      "ordinal": 13,
+      "pr_number": 4082
+    },
+    {
+      "beats": [],
+      "gold_labeled": false,
+      "note": "Adding support in async standalone client for maintenance notifications | +/-3784 in 12 files",
+      "ordinal": 14,
+      "pr_number": 4114
+    },
+    {
+      "beats": [],
+      "gold_labeled": false,
+      "note": "Adding SCH async cluster support | +/-2283 in 12 files",
+      "ordinal": 15,
+      "pr_number": 4131
+    },
+    {
+      "beats": [],
+      "gold_labeled": false,
+      "note": "feat: add async maintenance-notifications support for standalone and cluster clients | +/-10391 in 28 files",
+      "ordinal": 16,
+      "pr_number": 4177
+    },
+    {
+      "beats": [
+        "convention_change"
+      ],
+      "gold_labeled": false,
+      "note": "feat: add client-side HIMPORT fieldset support for standalone and cluster clients | +/-4590 in 33 files | edits README.md",
+      "ordinal": 17,
+      "pr_number": 4205
+    },
+    {
+      "beats": [],
+      "gold_labeled": false,
+      "note": "feat: decide client-side cache eligibility from command metadata | +/-6821 in 23 files",
+      "ordinal": 18,
+      "pr_number": 4272
+    }
+  ],
+  "frozen_at_sha": "7021617890d46a08e39bfd73caea226573c27958",
+  "repo": "redis/redis-py",
+  "selection_rule": "merged PRs touching the connection/cluster spine, at or above the median diff size of that pool, in chronological order, trimmed to the target length preferring PRs that revisit an already-seen module",
+  "spine": [
+    "redis/connection.py",
+    "redis/cluster.py",
+    "redis/asyncio/cluster.py",
+    "redis/commands/core.py"
+  ],
+  "style_guide_paths": [
+    "CONTRIBUTING.md",
+    "docs/CONTRIBUTING.md",
+    "README.md"
+  ]
+}

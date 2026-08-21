@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -94,7 +95,7 @@ class TestReportCommand(unittest.TestCase):
     def test_report_writes_summary_and_finds_breakeven(self):
         with tempfile.TemporaryDirectory() as tmp:
             synthetic_run(tmp)
-            self.assertEqual(main(["report", tmp]), 0)
+            self.assertEqual(main(["report", tmp], env_file=None), 0)
             out = json.loads(Path(tmp, "summary.json").read_text())
 
         self.assertEqual(set(out["agents"]), {"baseline", "memory"})
@@ -113,7 +114,7 @@ class TestReportCommand(unittest.TestCase):
 
     def test_report_on_a_missing_ledger_fails_loudly(self):
         with tempfile.TemporaryDirectory() as tmp:
-            self.assertEqual(main(["report", tmp]), 1)
+            self.assertEqual(main(["report", tmp], env_file=None), 1)
 
 
 class TestDatasetCommand(unittest.TestCase):
@@ -129,14 +130,15 @@ class TestDatasetCommand(unittest.TestCase):
             }
             path = Path(tmp, "sequence.json")
             path.write_text(json.dumps(seq))
-            code = main(["dataset", "validate", "--sequence", str(path), "--store", tmp])
+            code = main(["dataset", "validate", "--sequence", str(path), "--store", tmp], env_file=None)
         self.assertEqual(code, 1)
 
 
 class TestDoctorCommand(unittest.TestCase):
     def test_doctor_runs(self):
-        # Exit code depends on the environment's tokens; it must not raise.
-        self.assertIn(main(["doctor"]), (0, 1))
+        # Run from a temp cwd: main() loads ./.env, and the repo's real one must
+        # not leak into the test process.
+        self.assertEqual(main(["doctor"], env_file=None), 1)
 
 
 if __name__ == "__main__":

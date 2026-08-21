@@ -52,6 +52,7 @@ MAX_TEXT_LEN = 50_000
 MAX_BULK = 100
 MAX_SEARCH_LIMIT = 100
 MAX_TOPICS = 50
+USER_AGENT = "reviewbot-demo-harness/0.1"
 
 # Custom memory types registered on the store (spec 4d).
 REPO_CONVENTION = "repo_convention"
@@ -271,6 +272,11 @@ class AgentMemoryClient:
             "content-type": "application/json",
             "authorization": f"Bearer {self.api_key}",
             "accept": "application/json",
+            # Required in practice: the store endpoint sits behind Cloudflare,
+            # which answers a User-Agent-less request with 403 error_code 1010
+            # ("browser_signature_banned") -- indistinguishable from a bad key
+            # unless you read the body.
+            "user-agent": USER_AGENT,
         }
 
     def _call(

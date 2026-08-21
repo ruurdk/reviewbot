@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
@@ -24,6 +25,19 @@ from .github import GitHubClient, PullRequest, fetch_file_at
 # Files whose contents are never useful as review context.
 SKIP_SUFFIXES = (".png", ".jpg", ".gif", ".ico", ".pdf", ".whl", ".so", ".pyc", ".lock")
 MAX_SOURCE_CHARS = 200_000
+
+# Total source-context budget for one review, in characters (~100k tokens).
+#
+# Measured need for this: in the frozen redis-py sequence, PR #4052 touches 62
+# Python files. Reading all of them in full would approach the 1M context window
+# and cost several dollars for a single baseline review, letting two outlier PRs
+# dominate the whole comparison. So the baseline gets a budget the size of a
+# human reviewer's working set, filled with the files the diff touches most, and
+# every dropped file is reported rather than silently omitted.
+#
+# Note the direction: the budget makes the *baseline* cheaper, so it is a
+# conservative choice for the thesis rather than a convenient one.
+MAX_TOTAL_SOURCE_CHARS = 400_000
 
 
 class SourceProvider(Protocol):
@@ -112,31 +126,70 @@ def is_readable_source(path: str) -> bool:
     return not path.lower().endswith(SKIP_SUFFIXES)
 
 
+@dataclass
+class SourceContext:
+    """What the agent actually got to read, and what it did not."""
+
+    files: dict[str, str] = field(default_factory=dict)
+    dropped: list[str] = field(default_factory=list)
+    unreadable: list[str] = field(default_factory=list)
+    total_chars: int = 0
+    budget_chars: int = MAX_TOTAL_SOURCE_CHARS
+
+    @property
+    def n_read(self) -> int:
+        return len(self.files)
+
+    def as_notes(self) -> dict[str, object]:
+        return {
+            "files_read": self.n_read,
+            "files_dropped_over_budget": len(self.dropped),
+            "dropped": self.dropped[:10],
+            "source_chars": self.total_chars,
+            "budget_chars": self.budget_chars,
+        }
+
+
 def touched_sources(
     pr: PullRequest,
     provider: SourceProvider,
     *,
     sha: str | None = None,
     max_chars: int = MAX_SOURCE_CHARS,
-) -> dict[str, str]:
-    """Full contents of the files this PR touches, at the PR's base commit.
+    max_total_chars: int = MAX_TOTAL_SOURCE_CHARS,
+) -> SourceContext:
+    """Contents of the files this PR touches, at the PR's base commit, up to a
+    budget.
 
     Base rather than head on purpose: the reviewer sees the code as it was plus
     the diff, which is what a human reviewer sees. Deleted files are skipped --
     there is nothing to read.
+
+    Files are admitted in descending order of how much the diff changes them, so
+    the budget buys the most review-relevant context first. Ties break on
+    filename, and the result is re-sorted by path, so the prompt bytes are
+    deterministic and the cache prefix stays stable.
     """
     ref = sha or pr.base_sha
-    out: dict[str, str] = {}
-    for f in sorted(pr.files, key=lambda f: f.filename):
+    ctx = SourceContext(budget_chars=max_total_chars)
+    for f in sorted(pr.files, key=lambda f: (-f.changes, f.filename)):
         if f.status == "removed" or not is_readable_source(f.filename):
             continue
         text = provider.read(f.filename, ref)
         if text is None:
+            ctx.unreadable.append(f.filename)
             continue
         if len(text) > max_chars:
             text = text[:max_chars] + "\n# [truncated by the harness]\n"
-        out[f.filename] = text
-    return out
+        if ctx.files and ctx.total_chars + len(text) > max_total_chars:
+            ctx.dropped.append(f.filename)
+            continue
+        ctx.files[f.filename] = text
+        ctx.total_chars += len(text)
+    ctx.files = {k: ctx.files[k] for k in sorted(ctx.files)}
+    ctx.dropped.sort()
+    ctx.unreadable.sort()
+    return ctx
 
 
 def read_docs(provider: SourceProvider, paths: list[str], sha: str) -> dict[str, str]:

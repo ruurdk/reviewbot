@@ -8,14 +8,15 @@ import os
 import sys
 from pathlib import Path
 
-from . import analysis
+from . import analysis, curate
 from .accounting import Ledger, load_records
 from .agents import BaselineAgent, MemoryAgent
 from .claude import ClaudeClient
 from .config import ModelConfig
 from .dataset import Sequence, disclosure_table, rows, summary as dataset_summary, validate
-from .env import DEFAULT_ENV_FILE, REQUIRED_BY, load_env
+from .env import DEFAULT_ENV_FILE, REQUIRED_BY, is_placeholder, load_env, missing
 from .github import GitHubClient, PRStore
+from . import preflight
 from .memory import AgentMemoryClient
 from .quality import load_gold_dir
 from .repo import GitHubSourceProvider, LocalSourceProvider, read_docs
@@ -36,10 +37,17 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         (sys.version_info >= (3, 11), f"python {sys.version.split()[0]} (need >= 3.11)")
     ]
     for key, needed_by in REQUIRED_BY.items():
-        checks.append((bool(os.environ.get(key)), f"{key} -- needed by: {', '.join(needed_by)}"))
+        value = os.environ.get(key)
+        label = f"{key} -- needed by: {', '.join(needed_by)}"
+        if is_placeholder(value):
+            print(f"  [PLACEHOLDER] {label} (still template text, not a real value)")
+            checks.append((False, None))
+            continue
+        checks.append((bool(value), label))
     checks.append((Path(args.sequence).exists(), f"{args.sequence} exists"))
     for ok, label in checks:
-        print(f"  [{'ok ' if ok else 'MISSING'}] {label}")
+        if label is not None:
+            print(f"  [{'ok ' if ok else 'MISSING'}] {label}")
     print()
     print(f"  model config fingerprint: {cfg.fingerprint()}")
     print(f"  {cfg.canonical()}")
@@ -176,7 +184,7 @@ def cmd_run(args: argparse.Namespace) -> int:
             "REDIS_AGENT_MEMORY_API_KEY",
             "REDIS_AGENT_MEMORY_STORE_ID",
         ]
-    absent = [k for k in needed if not os.environ.get(k)] + (
+    absent = missing(needed) + (
         [] if args.store_id or "memory" not in wanted else ["--store-id"]
     )
     if absent:
@@ -223,6 +231,70 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_memcheck(args: argparse.Namespace) -> int:
+    """Verify the Agent Memory store is usable before spending review tokens."""
+    absent = missing(
+        ["REDIS_AGENT_MEMORY_URL", "REDIS_AGENT_MEMORY_API_KEY", "REDIS_AGENT_MEMORY_STORE_ID"]
+    )
+    if absent and not args.store_id:
+        print("missing credentials: " + ", ".join(absent), file=sys.stderr)
+        return 1
+    client = AgentMemoryClient(
+        args.store_id or os.environ.get("REDIS_AGENT_MEMORY_STORE_ID", ""),
+        namespace=args.namespace,
+    )
+    result = preflight.run(client, timeout=args.timeout)
+    print(result.render())
+    print()
+    print("store is ready" if result.ready else "store is NOT ready to run the memory agent")
+    return 0 if result.ready else 1
+
+
+def cmd_curate(args: argparse.Namespace) -> int:
+    """Scan redis-py, apply the stated selection rule, write a candidate sequence."""
+    if missing(["GITHUB_TOKEN"]):
+        print("missing credentials: GITHUB_TOKEN", file=sys.stderr)
+        return 1
+    client = GitHubClient(args.cache)
+    spine = args.spine.split(",") if args.spine else curate.DEFAULT_SPINE
+    candidates = curate.scan(client, args.repo, spine=spine, pages=args.pages)
+    selected, stats = curate.select(candidates, spine=spine, target=args.target)
+    print(curate.report(selected, stats, spine))
+    if stats["style_guide_candidates"]:
+        print(
+            "\nstyle-guide files seen in the scanned window: "
+            + ", ".join(stats["style_guide_candidates"])
+        )
+    if not selected:
+        print("\nnothing selected -- widen --pages or the spine", file=sys.stderr)
+        return 1
+
+    sequence = curate.build_sequence(args.repo, selected, spine=spine)
+    out = Path(args.out)
+    if out.exists() and not args.force:
+        print(
+            f"\n{out} already exists; refusing to overwrite a frozen sequence "
+            "(pass --force)",
+            file=sys.stderr,
+        )
+        return 1
+    sequence.save(out)
+    print(f"\nwrote {out} ({len(sequence)} PRs, frozen at {sequence.frozen_at_sha[:12]})")
+
+    store = PRStore(args.store)
+    prs = store.ingest(client, args.repo, [e.pr_number for e in sequence])
+    print(
+        f"ingested {len(prs)} PRs ({client.requests_made} API requests, "
+        f"{client.cache_hits} cache hits)"
+    )
+    problems = validate(sequence, store)
+    if problems:
+        print("\nstill to do before this sequence is usable:")
+        for p in problems:
+            print(f"  - {p}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="reviewbot", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -240,6 +312,17 @@ def build_parser() -> argparse.ArgumentParser:
     i.add_argument("--cache", default="data/cache/github")
     i.add_argument("--refresh", action="store_true", help="re-fetch even if cached")
     i.set_defaults(func=cmd_ingest)
+
+    cu = sub.add_parser("curate", help="scan the repo and propose a frozen PR sequence")
+    cu.add_argument("--repo", default="redis/redis-py")
+    cu.add_argument("--spine", default="", help="comma-separated paths; default: the connection/cluster spine")
+    cu.add_argument("--pages", type=int, default=3, help="pages of 100 closed PRs to scan")
+    cu.add_argument("--target", type=int, default=18, help="sequence length (spec calls for 15-25)")
+    cu.add_argument("--out", default=DEFAULT_SEQUENCE)
+    cu.add_argument("--store", default="data/prs")
+    cu.add_argument("--cache", default="data/cache/github")
+    cu.add_argument("--force", action="store_true", help="overwrite an existing sequence.json")
+    cu.set_defaults(func=cmd_curate)
 
     ds = sub.add_parser("dataset", help="validate or describe the frozen sequence")
     ds.add_argument("action", choices=["validate", "table", "summary"])
@@ -281,6 +364,12 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--force", action="store_true", help="run even if the dataset does not validate")
     run.set_defaults(func=cmd_run)
 
+    mc = sub.add_parser("memcheck", help="verify the Agent Memory store is provisioned and usable")
+    mc.add_argument("--store-id", default="")
+    mc.add_argument("--namespace", default=os.environ.get("REVIEWBOT_NAMESPACE", "redis-py-run-1"))
+    mc.add_argument("--timeout", type=float, default=30.0)
+    mc.set_defaults(func=cmd_memcheck)
+
     r = sub.add_parser("report", help="aggregate a run's ledger into the headline numbers")
     r.add_argument("run", help="run directory containing calls.jsonl")
     r.set_defaults(func=cmd_report)
@@ -290,8 +379,15 @@ def build_parser() -> argparse.ArgumentParser:
 LOADED_ENV: list[str] = []
 
 
-def main(argv: list[str] | None = None) -> int:
-    # Before parsing, so argument defaults that read the environment see it.
-    LOADED_ENV.extend(load_env())
+def main(argv: list[str] | None = None, *, env_file: str | None = DEFAULT_ENV_FILE) -> int:
+    """`env_file=None` skips loading .env.
+
+    Explicit rather than implicit because loading mutates os.environ for the
+    whole process: an in-process caller (a test) would otherwise pick up real
+    credentials and make live calls.
+    """
+    if env_file:
+        # Before parsing, so argument defaults that read the environment see it.
+        LOADED_ENV.extend(load_env(env_file))
     args = build_parser().parse_args(argv)
     return args.func(args)

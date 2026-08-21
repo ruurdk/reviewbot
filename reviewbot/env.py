@@ -62,5 +62,20 @@ def load_env(path: str | os.PathLike[str] = DEFAULT_ENV_FILE) -> list[str]:
     return applied
 
 
+PLACEHOLDER_MARKERS = ("REPLACE_ME", "your-api-key", "changeme")
+
+
+def is_placeholder(value: str | None) -> bool:
+    """True when a variable is set but still holds template text.
+
+    Presence is not usability: a copied .env with one field left unfilled reads
+    as configured and then fails on the first call, after the run has already
+    started spending tokens.
+    """
+    upper = (value or "").upper()
+    return bool(value) and any(m.upper() in upper for m in PLACEHOLDER_MARKERS)
+
+
 def missing(keys: tuple[str, ...] | list[str]) -> list[str]:
-    return [k for k in keys if not os.environ.get(k)]
+    """Keys that are unset *or* still placeholders."""
+    return [k for k in keys if not os.environ.get(k) or is_placeholder(os.environ.get(k))]

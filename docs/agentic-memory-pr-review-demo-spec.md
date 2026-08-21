@@ -33,6 +33,8 @@ Two agents review the **same PR sequence** under identical models, prompts, and 
 ### 4a. Baseline agent (control)
 On each PR it assembles context fresh: reads the diff, pulls the style guide / CONTRIBUTING doc, and reads the relevant source files it needs to understand the change. It produces review comments and logs token usage. It has no persistence between PRs and never contacts the memory service.
 
+**The baseline reads under a stated budget, not without limit.** In the frozen sequence, PR #4052 touches 62 Python files; reading them all in full would approach the 1M context window, cost several dollars for one review, and let two outlier PRs dominate the comparison. So source context is capped (400k chars, ~100k tokens — roughly a human reviewer's working set), filled with the files the diff changes most, and every dropped file is counted and reported per review. The direction matters: the budget makes the *baseline* cheaper, so the measured gap stays conservative.
+
 ### 4b. Memory agent (treatment)
 Same review loop, plus a **one-time primer** and a three-phase memory layer:
 - **Prime** (once per repo, before the sequence) — distill the repo's architecture and conventions into durable memories. See §4e; this is the mechanism that makes repo understanding a per-repo cost.
@@ -65,6 +67,14 @@ Notable absences to design around, not against:
 - **No `memory_prompt`-style convenience endpoint.** The harness assembles the final prompt itself. This is an advantage for this demo: every injected token is ours to count.
 - **No MCP interface** on the managed service. The agent talks to memory over the SDK/REST, and memory access is a harness-controlled phase rather than a model-chosen tool call. Keep it that way — a model-chosen tool call would make retrieval cost vary run to run and weaken the comparison.
 - **Search modes:** the product docs advertise semantic, keyword, and hybrid search, but the published OpenAPI search body exposes only `text` + `similarityThreshold`. Resolve this before building the retrieve phase (§12) rather than assuming hybrid is reachable.
+**Verified against the live preview service (2026-08-21, via `python3 -m reviewbot memcheck`):**
+
+- Auth is `Authorization: Bearer <key>` against `{store endpoint}/v1/stores/{storeId}/...`; `x-api-key` gets a 403. The base URL and header shape were previously inferred (the published OpenAPI declares neither `servers` nor `securitySchemes`) and are now confirmed.
+- A request carrying urllib's default `Python-urllib/3.12` User-Agent is rejected by Cloudflare with `403 error_code 1010` ("browser_signature_banned"). The body looks nothing like an auth failure, so this costs an hour if you meet it cold. Any explicit UA works.
+- **Custom memory types must be registered on the store before any write.** An unregistered type fails every create with `400 memory type "repo_convention" is not registered on this store`, and there is no registration endpoint on the data plane (`POST .../memory-types` 404s, `/v1/stores` 403s from another host) — so provisioning is a console/control-plane action, not something the harness can do. See [store-provisioning.md](store-provisioning.md) for the exact field definitions.
+- **The search body silently ignores unknown fields.** `searchMode`, `mode`, and `keyword` each return `200 {"items": []}` rather than a 400. So a mistyped retrieval knob looks like it worked, and §12's keyword/hybrid question cannot be settled by probing — the answer has to come from Redis.
+- `id` and `namespace` are validated server-side to alphanumerics-and-hyphens, confirming the correction in §4d. Bulk delete validates every id before deleting any, so one malformed id rejects the whole batch.
+
 - **Preview status.** Redis Agent Memory is currently in preview and behavior may change. Pin the SDK version, record the API version used, and re-verify the surface before the demo is shown.
 
 ### 4d. Memory model mapped onto the product
@@ -153,6 +163,22 @@ Three consequences for curation, straight out of those numbers:
 - **The connection/cluster spine is the sequence.** `connection.py`, `cluster.py`, `asyncio/cluster.py`, and `commands/core.py` are genuinely hot. Build the 15–25 PR sequence around that cluster so repeated-module reuse is a property of the real repo rather than a curatorial thumb on the scale — which is a materially stronger answer to "did you rig it?" than an argument about representativeness alone.
 - **Select for diff size, deliberately.** A median PR touches 2 files. If the sequence is drawn from the median, the baseline's per-PR re-read cost is small and so is the absolute gap — the curve bends, but unimpressively. Draw from the upper half of the size distribution and state that selection rule openly; the honest framing is "we chose PRs substantial enough for context assembly to cost something," not "we chose PRs where we win."
 - **Proxy-only quality labeling is not viable here.** With a median of 1 inline comment and a third of PRs having none, the merged human review is too sparse to serve as the sole gold standard — which is why §7c is a hybrid.
+
+**The sequence is now curated and frozen** (`python3 -m reviewbot curate`), from a scan of 127 merged PRs:
+
+| Step | Count |
+|---|---|
+| Merged PRs scanned | 127 |
+| Touching the connection/cluster spine | 58 |
+| Median diff size of that pool | 285 changes |
+| At or above the median | 29 |
+| Selected (chronological, trimmed) | 18 |
+
+Frozen at `7021617890d4` — the base commit of the first PR, so the primer reads the repo as it stood before the sequence began.
+
+**Module recurrence is 100% both before and after trimming.** The trim step prefers PRs that revisit an already-seen module, which would normally make the selected figure a curatorial artefact — but the untrimmed above-median pool recurs just as much, so recurrence here is a property of the real repo rather than of the selection. Quote both numbers; the second is the one that answers "did you rig it?".
+
+Two beats remain unassigned: the recurring-bug pattern and the false-positive trap both require reading diffs, so `curate` leaves them empty rather than guessing. `dataset validate` fails until they are filled in.
 
 The sequence must deliberately include:
 - **Repeated modules** — several PRs touching the same files, so semantic memory gets reused. Use the connection/cluster spine.

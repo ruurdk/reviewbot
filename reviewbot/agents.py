@@ -28,7 +28,7 @@ from .memory import (
     memory_id,
     scoped_filter,
 )
-from .repo import SourceProvider, touched_sources
+from .repo import MAX_TOTAL_SOURCE_CHARS, SourceContext, SourceProvider, touched_sources
 from .review import (
     Finding,
     ReviewContext,
@@ -124,6 +124,7 @@ class ReviewOutcome:
     memories_used: list[str] = field(default_factory=list)
     written: list[str] = field(default_factory=list)
     files_read: int = 0
+    files_dropped: int = 0
     injected_tokens: int = 0
 
     @property
@@ -147,27 +148,29 @@ class BaselineAgent:
         *,
         conventions: dict[str, str],
         max_patch_chars: int | None = None,
+        source_budget: int = MAX_TOTAL_SOURCE_CHARS,
     ):
         self.client = client
         self.provider = provider
         self.conventions = conventions
         self.max_patch_chars = max_patch_chars
+        self.source_budget = source_budget
 
-    def context_for(self, pr: PullRequest) -> tuple[ReviewContext, int]:
-        sources = touched_sources(pr, self.provider)
+    def context_for(self, pr: PullRequest) -> tuple[ReviewContext, SourceContext]:
+        sources = touched_sources(pr, self.provider, max_total_chars=self.source_budget)
         stable = [conventions_block(self.conventions)] if self.conventions else []
-        volatile = [source_context_block(sources)] if sources else []
-        return ReviewContext(stable_blocks=stable, volatile_blocks=volatile), len(sources)
+        volatile = [source_context_block(sources.files)] if sources.files else []
+        return ReviewContext(stable_blocks=stable, volatile_blocks=volatile), sources
 
     def review_pr(self, pr: PullRequest, ordinal: int) -> ReviewOutcome:
-        context, n_files = self.context_for(pr)
+        context, sources = self.context_for(pr)
         result = review(
             self.client,
             Tags(self.name, pr.pr_id, ordinal, "review"),
             pr,
             context,
             max_patch_chars=self.max_patch_chars,
-            notes={"files_read": n_files},
+            notes=sources.as_notes(),
         )
         return ReviewOutcome(
             agent=self.name,
@@ -175,7 +178,8 @@ class BaselineAgent:
             pr_ordinal=ordinal,
             findings=result.findings,
             result=result,
-            files_read=n_files,
+            files_read=sources.n_read,
+            files_dropped=len(sources.dropped),
         )
 
 

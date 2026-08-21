@@ -140,6 +140,7 @@ class SequenceRunner:
             result.outcomes[name] = {
                 "findings": [asdict(f) for f in outcome.findings],
                 "files_read": outcome.files_read,
+                "files_dropped_over_budget": outcome.files_dropped,
                 "retrieved": len(outcome.retrieved),
                 "memories_used": outcome.memories_used,
                 "injected_tokens": outcome.injected_tokens,
@@ -167,6 +168,13 @@ class SequenceRunner:
             warnings.append(
                 f"{agent} read {tokens:,} cache tokens on a shared prefix it did "
                 "not write; the production-equivalent series prices this out"
+            )
+        dropped = sum(o.files_dropped for o in self.outcomes)
+        if dropped:
+            warnings.append(
+                f"{dropped} touched file(s) exceeded the per-review source budget "
+                "and were not read; the budget lowers the baseline's cost, so the "
+                "measured gap stays conservative"
             )
         truncated = sum(a["truncated_calls"] for a in accounting["agents"].values())
         if truncated:
