@@ -212,5 +212,26 @@ class TestSummary(unittest.TestCase):
         self.assertEqual(out["agents"]["memory"]["cross_pr_read_tokens"], 20_000)
 
 
+class TestMemoriesReturnedCountsSearchesOnly(unittest.TestCase):
+    def test_writes_and_visibility_waits_are_not_retrievals(self):
+        """The primer row once read 216 memories returned for 108 written.
+
+        `memories_returned` answers "how many did retrieval pull to use three"
+        (spec 7b). A create reporting what it wrote, and a visibility wait
+        reporting what became searchable, are not retrievals.
+        """
+        rows = [
+            rec("memory", 0, "prime", kind=MEMORY_OP, memory_op="create", memories_returned=100),
+            rec("memory", 0, "prime", kind=MEMORY_OP, memory_op="create", memories_returned=8),
+            rec("memory", 0, "prime", kind=MEMORY_OP, memory_op="wait", memories_returned=108),
+            rec("memory", 1, "retrieve", kind=MEMORY_OP, memory_op="search", memories_returned=20),
+        ]
+        table = per_pr(rows)
+        self.assertEqual(table[("memory", 0)].memories_returned, 0)
+        self.assertEqual(table[("memory", 1)].memories_returned, 20)
+        # The ops themselves are still counted.
+        self.assertEqual(table[("memory", 0)].memory_ops, 3)
+
+
 if __name__ == "__main__":
     unittest.main()

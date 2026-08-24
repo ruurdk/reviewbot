@@ -48,6 +48,15 @@ class Refusal(RuntimeError):
     an unhandled refusal would silently log a review with zero findings."""
 
 
+class Truncated(RuntimeError):
+    """stop_reason == "max_tokens": the structured output never closed.
+
+    A truncated review is not a review with fewer findings, it is unparseable --
+    `output_config.format` guarantees valid JSON only for a *completed*
+    response. Raising here is the difference between "the ceiling was too low
+    for PR N" and a bare JSONDecodeError forty frames down."""
+
+
 @dataclass
 class Tags:
     """Required on every call. Spec 7: an untagged call is an unmeasurable one."""
@@ -74,9 +83,25 @@ class ClaudeResult:
     def json(self) -> Any:
         """Parse the response as JSON.
 
-        Safe when the call used `output_schema`: output_config.format
-        guarantees the first text block is valid JSON.
+        `output_config.format` guarantees valid JSON for a completed response,
+        so the two failure modes worth naming are a truncated one and an empty
+        one -- both of which arrive as HTTP 200.
         """
+        if self.truncated:
+            raise Truncated(
+                f"{self.record.agent}/{self.record.pr_id}/{self.record.phase} hit "
+                f"max_tokens ({self.usage.output_tokens:,} output tokens) and its "
+                "JSON never closed. At xhigh, thinking and response text share the "
+                "ceiling. Raise --max-tokens, or lower --effort, and re-run: the "
+                "checkpoint keeps the PRs already reviewed."
+            )
+        if not self.text.strip():
+            raise Truncated(
+                f"{self.record.agent}/{self.record.pr_id}/{self.record.phase} "
+                f"returned no text (stop_reason={self.stop_reason!r}); there is "
+                "nothing to parse. Reporting this as an empty review would credit "
+                "the agent with zero findings it never made."
+            )
         return json.loads(self.text)
 
 
@@ -226,13 +251,18 @@ class ClaudeClient:
         pid = prefix_id(payload)
         started = time.monotonic()
         status, _, body = self._send("/v1/messages", payload)
-        latency_ms = int((time.monotonic() - started) * 1000)
+        # Time to first byte only: on a streamed request `_send` returns as soon
+        # as the headers land, and the response body is still arriving.
+        ttfb_ms = int((time.monotonic() - started) * 1000)
 
         if payload.get("stream"):
             text, thinking, stop_reason, usage, raw = _parse_sse(body)
         else:
             raw = json.loads(b"".join(body).decode())
             text, thinking, stop_reason, usage = _parse_message(raw)
+        # Measured after the stream is drained, or a 38k-output review that took
+        # seven minutes gets logged as six seconds -- which is what happened.
+        latency_ms = int((time.monotonic() - started) * 1000)
 
         rec = CallRecord(
             run_id=self.ledger.run_id if self.ledger else "",
@@ -242,8 +272,10 @@ class ClaudeClient:
             phase=tags.phase,
             kind=MODEL_CALL,
             latency_ms=latency_ms,
+            ttfb_ms=ttfb_ms,
             model=self.config.model,
             effort=self.config.effort,
+            max_tokens=self.config.max_tokens,
             cache_ttl=self.config.cache_ttl,
             usage=usage,
             stop_reason=stop_reason,

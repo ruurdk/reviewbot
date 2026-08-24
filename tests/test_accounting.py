@@ -6,7 +6,9 @@ import unittest
 from pathlib import Path
 
 from reviewbot.accounting import CallRecord, Ledger, Usage, total_billed_usd
+from reviewbot.claude import ClaudeClient, Tags
 from reviewbot.config import ModelConfig, pricing_for
+from tests.fakes import FakeClaude
 
 OPUS = pricing_for("claude-opus-5")
 
@@ -170,6 +172,28 @@ class TestConfoundGuard(unittest.TestCase):
         self.assertEqual(params["output_config"], {"effort": "xhigh"})
         self.assertNotIn("system", params)
         self.assertNotIn("messages", params)
+
+
+class TestConfigProvenancePerRow(unittest.TestCase):
+    def test_the_confound_knobs_are_recorded_on_every_model_call(self):
+        """A run manifest states one fingerprint; the rows must carry their own.
+
+        max_tokens was raised mid-run once. Without it on the row, the ledger
+        could not show which calls were made under which ceiling, and the
+        manifest would have claimed the new value for all of them.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            config = ModelConfig(max_tokens=64000, stream=False)
+            fake = FakeClaude(findings=[])
+            client = ClaudeClient(config, Ledger(tmp, "r"), api_key="t", transport=fake.transport)
+            result = client.messages(
+                Tags("memory", "pr#1", 1, "review"),
+                system=[{"type": "text", "text": "hi"}],
+                messages=[{"role": "user", "content": "hi"}],
+            )
+        self.assertEqual(result.record.max_tokens, 64000)
+        self.assertEqual(result.record.effort, config.effort)
+        self.assertEqual(result.record.model, config.model)
 
 
 if __name__ == "__main__":

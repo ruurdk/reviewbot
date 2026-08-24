@@ -49,7 +49,7 @@ responsibilities, conventions, invariants. One durable fact per record.
 
 | Field | Type | Purpose |
 |---|---|---|
-| `module` | `str` | Path prefix the fact belongs to. **The routing key** — per-PR retrieval filters on `module in {touched files}`. |
+| `module` | `str` | Path the fact belongs to. Provenance and reporting only — **retrieval does not filter on it**; see "Module routing lives in `topics`" below. |
 | `kind` | `str` | `architecture` / `convention` / `invariant` / `ownership`. |
 | `topic` | `str` | Short stable slug; part of the record id, so re-priming is idempotent. |
 | `source` | `str` | `style-guide` / `human-correction` / `inferred`. |
@@ -63,7 +63,7 @@ specific diff.
 
 | Field | Type | Purpose |
 |---|---|---|
-| `module` | `str` | Routing key, as above. |
+| `module` | `str` | Provenance, as above. |
 | `finding_class` | `str` | Groups recurrences; drives the recurring-bug and false-positive beats. |
 | `pr_ordinal` | `str` | Position in the frozen sequence, zero-padded (`"003"`). |
 | `pr_number` | `str` | The real PR number, for drill-down in the replay page. |
@@ -94,6 +94,30 @@ accepts, and the calibrated checklist.
   Alphanumerics and hyphens only — the service rejects `redis-py/run-1`, which
   is confirmed both client- and server-side.
 
+## Module routing lives in `topics`, not `attributes`
+
+Found by the first real run, 2026-08-24, and it cost that run its entire
+retrieve phase. Every record therefore carries the raw path of each module it
+concerns as a **topic**, and `scoped_filter()` fans out over
+`topics: {in: [...]}`.
+
+- An attribute clause is a *typed union*: `400 exactly one of string, number,
+  boolean, or list must be set`. Anything operator-shaped — `eq`, `in`, `any`,
+  `contains` — is `400 unknown filter clause member`.
+- The dangerous variant is `list`. `{"module": {"list": [a, b]}}` compares
+  against the **whole value**, so it is equality and not membership: a
+  one-element list matches a scalar attribute, and a two-element list matches
+  nothing. It returns `200 {"items": []}`, which is indistinguishable from "the
+  store is empty".
+- `topics` accepts `eq` / `ne` / `in` / `all` (the service enumerates them in its
+  own error text), stores raw file paths verbatim — slashes, dots and all, no
+  slug mapping needed — and round-trips them in search results. A 300-entry `in`
+  list was accepted, against a 78-file worst case in the frozen sequence.
+- **A search response omits `attributes` entirely.** Only `GET
+  .../long-term-memory/{id}` returns them, and search results carry no relevance
+  score either. Anything computed from retrieved memories must read `topics` or
+  the id.
+
 ## Two behaviours to keep in mind while tuning retrieval
 
 - **The search body silently ignores unknown fields.** `searchMode`, `mode`, and
@@ -104,3 +128,8 @@ accepts, and the calibrated checklist.
 - **Bulk delete validates every id before deleting any.** One malformed id
   rejects the whole batch with a 400, so a per-run reset needs client-side id
   validation first (`memory.validate_id`, which the client applies).
+- **Unknown *top-level* filter keys are ignored too.** A filter of
+  `{"namespace": {...}, "bogusKey": {"eq": "x"}}` returns the unfiltered result
+  set with a 200. Combined with the point above: never infer that a filter took
+  effect from the fact that the call succeeded. The only proof is a result set
+  that changes when the clause changes.

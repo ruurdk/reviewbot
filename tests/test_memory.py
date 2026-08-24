@@ -11,7 +11,11 @@ from reviewbot.memory import (
     Memory,
     NotVisible,
     PartialWrite,
+    MemoryError_,
     memory_id,
+    module_topics,
+    resolve_module,
+    resolve_modules,
     scoped_filter,
     validate_namespace,
 )
@@ -27,7 +31,9 @@ def conv(mid, text, module, **attrs):
         memory_type=REPO_CONVENTION,
         namespace=NS,
         owner_id="memory-agent",
-        topics=["convention"],
+        # Mirrors the agents: the module path is a topic, because topics carry
+        # the only membership filter the service offers.
+        topics=["convention", module],
         attributes={"module": module, **attrs},
     )
 
@@ -73,10 +79,78 @@ class TestScopedFilter(unittest.TestCase):
         f = scoped_filter(NS, modules=["a.py"])
         self.assertEqual(f["namespace"], {"eq": NS})
 
-    def test_modules_or_within_one_clause(self):
-        f = scoped_filter(NS, memory_types=[REPO_CONVENTION, REVIEW_FINDING], modules=["a.py", "b.py"])
-        self.assertEqual(f["attributes"]["module"], {"in": ["a.py", "b.py"]})
+    def test_modules_or_within_one_topics_clause(self):
+        f = scoped_filter(NS, memory_types=[REPO_CONVENTION, REVIEW_FINDING], modules=["b.py", "a.py"])
+        # Modules route through `topics`, not `attributes`: an attribute clause
+        # is a typed union with no membership operator at all (verified live).
+        self.assertEqual(f["topics"], {"in": ["a.py", "b.py"]})
+        self.assertNotIn("attributes", f)
         self.assertEqual(f["memoryType"], {"in": [REPO_CONVENTION, REVIEW_FINDING]})
+
+    def test_attribute_extras_get_the_typed_clause(self):
+        f = scoped_filter(NS, attributes={"finding_class": "resource-leak", "pr_ordinal": 3})
+        self.assertEqual(f["attributes"]["finding_class"], {"string": "resource-leak"})
+        self.assertEqual(f["attributes"]["pr_ordinal"], {"number": 3})
+
+    def test_service_rejects_a_membership_operator_on_an_attribute(self):
+        """The regression guard for the bug this shape caused.
+
+        An earlier draft filtered modules with `attributes.module: {in: [...]}`.
+        The live service answers that with a 400, and every retrieval in the run
+        failed. The fake now models the same rejection, so the suite catches it.
+        """
+        svc = FakeMemoryService()
+        c = client(svc)
+        c.create([conv("c-conn", "connection.py owns the socket lifecycle", "redis/connection.py")])
+        with self.assertRaises(MemoryError_) as ctx:
+            c.search(
+                "socket lifecycle",
+                filter={"namespace": {"eq": NS}, "attributes": {"module": {"in": ["redis/connection.py"]}}},
+                limit=10,
+            )
+        self.assertIn("unknown filter clause member", str(ctx.exception))
+
+    def test_a_two_element_attribute_list_is_equality_not_membership(self):
+        """`list` compares the whole value, so it silently matches nothing.
+
+        This returns 200 with an empty result set, which is indistinguishable
+        from "no memories written yet" -- the reason module routing does not use
+        it.
+        """
+        svc = FakeMemoryService()
+        c = client(svc)
+        c.create(
+            [
+                conv("c-conn", "connection.py owns the socket lifecycle", "redis/connection.py"),
+                conv("c-clust", "cluster.py maps slots to nodes", "redis/cluster.py"),
+            ]
+        )
+        found, _ = c.search(
+            "socket lifecycle",
+            filter={
+                "namespace": {"eq": NS},
+                "attributes": {"module": {"list": ["redis/connection.py", "redis/cluster.py"]}},
+            },
+            limit=10,
+        )
+        self.assertEqual(found, [])
+
+    def test_search_results_carry_no_attributes(self):
+        """Only GET returns `attributes`; a searched record has none.
+
+        Anything computed from retrieved memories has to read `topics` or the
+        id, never `attributes`.
+        """
+        svc = FakeMemoryService()
+        c = client(svc)
+        c.create([conv("c-conn", "connection.py owns the socket lifecycle", "redis/connection.py")])
+        found, _ = c.search(
+            "socket lifecycle", filter=scoped_filter(NS, modules=["redis/connection.py"]), limit=10
+        )
+        self.assertEqual([m.id for m in found], ["c-conn"])
+        self.assertEqual(found[0].attributes, {})
+        self.assertIn("redis/connection.py", found[0].topics)
+        self.assertEqual(c.get("c-conn").attributes["module"], "redis/connection.py")
 
 
 class TestCreateAndSearch(unittest.TestCase):
@@ -211,6 +285,113 @@ class TestMissingCredentials(unittest.TestCase):
         with self.assertRaises(Exception) as ctx:
             c.search("x")
         self.assertIn("REDIS_AGENT_MEMORY_URL", str(ctx.exception))
+
+
+class TestTopicConstraints(unittest.TestCase):
+    """Topics carry module routing, so the service's limits on them bite hard."""
+
+    def test_an_overlong_topic_is_refused_client_side(self):
+        """The service answers with `Topics: (1: the length must be between 1
+        and 100.)` -- an index, not a field name. This failed a real run's write
+        phase, so the check names what actually went wrong."""
+        sentence = "the connection module should close the socket when " * 3
+        with self.assertRaises(ValueError) as ctx:
+            Memory(
+                id="c-long",
+                text="fine",
+                memory_type=REPO_CONVENTION,
+                namespace=NS,
+                owner_id="memory-agent",
+                topics=["finding", sentence],
+            )
+        message = str(ctx.exception)
+        self.assertIn("caps topics at 100", message)
+        self.assertIn("module path was expected", message)
+
+    def test_an_empty_topic_is_refused(self):
+        with self.assertRaises(ValueError):
+            Memory(
+                id="c-empty",
+                text="fine",
+                memory_type=REPO_CONVENTION,
+                namespace=NS,
+                owner_id="memory-agent",
+                topics=["finding", ""],
+            )
+
+    def test_module_topics_drops_rather_than_truncates(self):
+        """A truncated path matches no filter, so keeping it hides the loss."""
+        long_path = "redis/" + "x" * 120 + ".py"
+        self.assertEqual(module_topics([long_path, "redis/connection.py"]), ["redis/connection.py"])
+
+
+class TestResolveModule(unittest.TestCase):
+    """A module that is not a touched file is unretrievable forever."""
+
+    TOUCHED = ["redis/connection.py", "redis/asyncio/connection.py", "redis/cluster.py"]
+
+    def test_exact_path_wins(self):
+        self.assertEqual(resolve_module("redis/cluster.py", self.TOUCHED), "redis/cluster.py")
+
+    def test_a_unique_basename_resolves(self):
+        self.assertEqual(resolve_module("cluster.py", self.TOUCHED), "redis/cluster.py")
+
+    def test_an_ambiguous_basename_does_not_guess(self):
+        """connection.py matches two touched files; guessing would route the
+        memory to the wrong module, which is worse than not routing it."""
+        self.assertIsNone(resolve_module("connection.py", self.TOUCHED))
+
+    def test_free_text_and_empty_do_not_resolve(self):
+        self.assertIsNone(resolve_module("the connection handling code", self.TOUCHED))
+        self.assertIsNone(resolve_module("", self.TOUCHED))
+
+
+class TestResolveModules(unittest.TestCase):
+    """Measured on the first real run: 5 of 6 written findings named a directory.
+
+    Dropping those loses 83% of a PR's episodic memory. A directory genuinely
+    covers the touched files beneath it, so it routes to all of them.
+    """
+
+    TOUCHED = [
+        "redis/connection.py",
+        "redis/asyncio/connection.py",
+        "redis/cluster.py",
+        "redis/commands/search/commands.py",
+        "redis/commands/search/query.py",
+        "tests/test_cluster.py",
+    ]
+
+    def test_a_directory_routes_to_every_touched_file_beneath_it(self):
+        self.assertEqual(
+            resolve_modules("redis/commands/search", self.TOUCHED),
+            ["redis/commands/search/commands.py", "redis/commands/search/query.py"],
+        )
+
+    def test_a_trailing_slash_is_equivalent(self):
+        self.assertEqual(
+            resolve_modules("redis/commands/search/", self.TOUCHED),
+            resolve_modules("redis/commands/search", self.TOUCHED),
+        )
+
+    def test_an_exact_path_beats_the_directory_rule(self):
+        self.assertEqual(resolve_modules("redis/cluster.py", self.TOUCHED), ["redis/cluster.py"])
+
+    def test_an_ambiguous_basename_falls_through_to_nothing(self):
+        """connection.py matches two touched files and is not a directory, so
+        guessing one would route the memory to the wrong module."""
+        self.assertEqual(resolve_modules("connection.py", self.TOUCHED), [])
+
+    def test_free_text_resolves_to_nothing(self):
+        self.assertEqual(resolve_modules("the connection handling code", self.TOUCHED), [])
+
+    def test_a_directory_matching_nothing_touched_resolves_to_nothing(self):
+        self.assertEqual(resolve_modules("docs", self.TOUCHED), [])
+
+    def test_the_module_topic_count_is_capped(self):
+        touched = [f"redis/commands/f{i}.py" for i in range(40)]
+        resolved = resolve_modules("redis/commands", touched)
+        self.assertEqual(len(resolved), 20)  # MAX_MODULE_TOPICS, under MAX_TOPICS
 
 
 if __name__ == "__main__":

@@ -252,5 +252,106 @@ class TestNoConfound(unittest.TestCase):
         )
 
 
+def pr_touching(*paths):
+    return PullRequest(
+        repo="redis/redis-py",
+        number=4444,
+        title="a change",
+        body="",
+        base_sha="basesha",
+        head_sha="headsha",
+        merge_commit_sha=None,
+        merged_at=None,
+        files=[FileChange(p, "modified", 5, 1, 6, patch="@@ -1 +1 @@\n+x") for p in paths],
+    )
+
+
+class TestWritePhaseRouting(unittest.TestCase):
+    """A record whose module is not a touched file can never be retrieved."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = self._tmp.name
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _agent(self, records, finding_file="redis/cluster.py"):
+        svc = FakeMemoryService()
+        fake = FakeClaude(
+            findings=[
+                {
+                    "file": finding_file,
+                    "line": 10,
+                    "severity": "major",
+                    "category": "slots",
+                    "message": "slot cache mutated without the lock",
+                    "confidence": "high",
+                }
+            ],
+            memories_used=[],
+            records=records,
+        )
+        ledger = Ledger(self.tmp, "r")
+        client = ClaudeClient(ModelConfig(stream=False), ledger, api_key="t", transport=fake.transport)
+        agent = MemoryAgent(
+            client,
+            AgentMemoryClient(
+                "store-1",
+                base_url="https://example.invalid",
+                api_key="k",
+                namespace="redis-py-run-1",
+                ledger=ledger,
+                transport=svc.transport,
+            ),
+            conventions={},
+        )
+        return agent, svc, ledger
+
+    def test_a_bare_basename_is_routed_to_the_touched_path(self):
+        agent, svc, _ = self._agent(
+            [{"module": "cluster.py", "topic": "slots", "pattern": "p", "text": "a durable rule"}]
+        )
+        outcome = agent.review_pr(pr_touching("redis/cluster.py"), 1)
+        self.assertEqual(len(outcome.written), 1)
+        self.assertIn("redis/cluster.py", svc.records[outcome.written[0]]["topics"])
+
+    def test_free_text_module_is_dropped_and_logged_not_written_unreachable(self):
+        agent, svc, ledger = self._agent(
+            [{"module": "the cluster handling code", "topic": "nope", "pattern": "p", "text": "a rule"}],
+            finding_file="redis/cluster.py",
+        )
+        outcome = agent.review_pr(pr_touching("redis/cluster.py"), 1)
+        self.assertEqual(outcome.written, [])
+        notes = [r.notes for r in ledger.records() if (r.notes or {}).get("unroutable_modules")]
+        self.assertTrue(notes, "an unroutable module must be recorded, not swallowed")
+        self.assertIn("the cluster handling code", notes[0]["unroutable_modules"])
+
+    def test_a_directory_module_routes_to_all_touched_files(self):
+        """The commonest real failure: the distiller names a directory."""
+        agent, svc, _ = self._agent(
+            [{"module": "redis/commands", "topic": "api", "pattern": "p", "text": "a rule"}],
+            finding_file="redis/commands/core.py",
+        )
+        pr = pr_touching("redis/commands/core.py", "redis/commands/helpers.py", "redis/cluster.py")
+        outcome = agent.review_pr(pr, 1)
+        self.assertEqual(len(outcome.written), 1)
+        topics = svc.records[outcome.written[0]]["topics"]
+        self.assertIn("redis/commands/core.py", topics)
+        self.assertIn("redis/commands/helpers.py", topics)
+        self.assertNotIn("redis/cluster.py", topics)  # not under that directory
+
+    def test_the_finding_file_rescues_a_module_the_distiller_mangled(self):
+        """The distilled `module` is free text, but the finding it came from
+        names a real file -- routing by `topic` recovers it."""
+        agent, svc, _ = self._agent(
+            [{"module": "unclear", "topic": "slots", "pattern": "p", "text": "a rule"}],
+            finding_file="redis/cluster.py",
+        )
+        outcome = agent.review_pr(pr_touching("redis/cluster.py"), 1)
+        self.assertEqual(len(outcome.written), 1)
+        self.assertIn("redis/cluster.py", svc.records[outcome.written[0]]["topics"])
+
+
 if __name__ == "__main__":
     unittest.main()

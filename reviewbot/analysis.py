@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Sequence
 
-from .accounting import CallRecord
+from .accounting import ABANDONED, CallRecord
 from .config import PHASES, pricing_for
 
 # --- spec 7d --------------------------------------------------------------
@@ -130,8 +130,35 @@ def cross_pr_read_tokens(records: Sequence[CallRecord]) -> dict[int, int]:
     return out
 
 
+def abandoned_seqs(records: Iterable[CallRecord]) -> set[int]:
+    """Seq numbers superseded by a resume (see accounting.ABANDONED)."""
+    out: set[int] = set()
+    for rec in records:
+        if rec.kind == ABANDONED:
+            out.update((rec.notes or {}).get("superseded_seqs") or [])
+    return out
+
+
+def abandoned_cost(records: Iterable[CallRecord]) -> dict[str, Any]:
+    """What the superseded attempts cost. Spent, but not attributable to a PR."""
+    recs = list(records)
+    dropped = abandoned_seqs(recs)
+    rows = [r for r in recs if r.seq in dropped and r.billable]
+    return {
+        "calls": len(rows),
+        "billed_usd": sum(r.billed_usd() for r in rows),
+        "context_volume": sum(r.context_volume for r in rows),
+        "seqs": sorted(dropped),
+    }
+
+
 def per_pr(records: Iterable[CallRecord]) -> dict[tuple[str, int], PRTotals]:
     recs = list(records)
+    # Superseded attempts are excluded here, not filtered by the caller: every
+    # aggregate in this module goes through per_pr(), so excluding once is what
+    # keeps the two series consistent with each other.
+    dropped = abandoned_seqs(recs)
+    recs = [r for r in recs if r.seq not in dropped and r.kind != ABANDONED]
     prod = production_equivalent_usd(recs)
     cross = cross_pr_read_tokens(recs)
     table: dict[tuple[str, int], PRTotals] = {}
@@ -146,7 +173,13 @@ def per_pr(records: Iterable[CallRecord]) -> dict[tuple[str, int], PRTotals]:
             if rec.memory_op == "wait":
                 totals.memory_wait_ms += rec.latency_ms
             totals.injected_memory_tokens += rec.injected_tokens or 0
-            totals.memories_returned += rec.memories_returned or 0
+            # Searches only. Every memory op reports a count -- a create reports
+            # what it wrote, a visibility wait reports what became searchable --
+            # and summing them made the primer row read 216 for the 108 records
+            # it actually wrote. This number exists to answer "how many memories
+            # did retrieval pull to use three", so a write is not one of them.
+            if rec.memory_op == "search":
+                totals.memories_returned += rec.memories_returned or 0
             continue
 
         usd = rec.billed_usd()
@@ -315,8 +348,41 @@ def summary(records: Iterable[CallRecord]) -> dict[str, Any]:
         },
         "primer": primer_amortization(recs),
         "cache_integrity": cache_integrity(recs),
+        "abandoned": abandoned_cost(recs),
         "shared_prefix_freeriding": shared_prefix_freeriding(recs),
         "phases": list(PHASES),
+        # One row per (agent, PR), serialized rather than left for a consumer to
+        # recompute: the replay page must not do its own accounting, or the
+        # number on screen stops being traceable to a ledger row.
+        "per_pr": [
+            {
+                "agent": t.agent,
+                "pr_ordinal": t.pr_ordinal,
+                "pr_id": t.pr_id,
+                "context_volume": t.total.context_volume,
+                "billed_usd": t.total.billed_usd,
+                "billed_usd_production": t.total.billed_usd_production,
+                "output_tokens": t.total.output_tokens,
+                "calls": t.total.calls,
+                "memory_overhead_usd": t.memory_overhead_usd,
+                # Context volume per phase: the ordered stack on the per-PR bars.
+                "by_phase": {
+                    phase: bucket.context_volume
+                    for phase, bucket in sorted(t.by_phase.items())
+                },
+                # Caching-tier split of the input side, for the other facet.
+                "tiers": {
+                    "uncached": t.uncached_tokens,
+                    "cache_write": t.cache_write_tokens,
+                    "cache_read": t.cache_read_tokens,
+                },
+                "cross_pr_read_tokens": t.cross_pr_read_tokens,
+                "injected_tokens": t.injected_memory_tokens,
+                "memories_returned": t.memories_returned,
+                "truncated_calls": t.truncated_calls,
+            }
+            for _, t in sorted(table.items())
+        ],
     }
     for agent in agents:
         rows = [t for (a, _), t in sorted(table.items()) if a == agent]

@@ -15,6 +15,7 @@ import { Badge, Banner, Card, Switch, Typography } from "@redis-ui/components";
  *   role="tablist" of buttons, which is less coupling for a 4-way toggle.
  * - There is NO Table component in this version (only TableHeading), so the
  *   accounting table is hand-built -- see components/AccountingTable.jsx.
+ * - Badge takes a `label` string; children are ignored and render nothing.
  */
 import { CumulativeCost } from "./charts/CumulativeCost";
 import { PerPrBreakdown } from "./charts/PerPrBreakdown";
@@ -102,8 +103,10 @@ export function App({ mode, onToggleMode }) {
           gap: its longest TTL is one hour, and no real PR cadence fits inside that.
         </Typography.Body>
         <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10, flexWrap: "wrap" }}>
-          <Badge>config {report.config_fingerprint}</Badge>
-          <Badge>run {report.run_id}</Badge>
+          {/* Badge takes `label`, not children -- children render as nothing,
+              which silently dropped the run provenance from the page. */}
+          <Badge label={`config ${report.config_fingerprint}`} />
+          <Badge label={`run ${report.run_id}`} />
           <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 8 }}>
             <Typography.Body size="S">Dark</Typography.Body>
             <Switch checked={mode === "dark"} onCheckedChange={onToggleMode} aria-label="Dark mode" />

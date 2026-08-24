@@ -26,6 +26,8 @@ from .memory import (
     AgentMemoryClient,
     Memory,
     memory_id,
+    module_topics,
+    resolve_modules,
     scoped_filter,
 )
 from .repo import MAX_TOTAL_SOURCE_CHARS, SourceContext, SourceProvider, touched_sources
@@ -88,7 +90,8 @@ Rules:
 - One fact per record, phrased as a reusable rule or a recurring pattern, not as a report about this specific diff. "PR 3411 leaked a socket" is useless; "connection setup in connection.py must close the socket if the handshake raises, this was missed once" is reusable.
 - Skip findings that are purely local to the diff and teach nothing general.
 - If a finding is an instance of a pattern likely to recur, say so in the pattern field.
-- Return an empty list if the review taught nothing durable. That is a normal outcome."""
+- Return an empty list if the review taught nothing durable. That is a normal outcome.
+- `module` must be copied verbatim from the `file` of one of the findings you were given. It is a retrieval key matched by exact string equality, not a description: any other value makes the record unreachable forever."""
 
 WRITE_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -246,7 +249,10 @@ class MemoryAgent:
                         memory_type=REPO_CONVENTION,
                         namespace=self.memory.namespace,
                         owner_id=self.memory.owner_id,
-                        topics=["convention", fact["kind"]],
+                        # The module path is a *topic*, not just an attribute:
+                        # topics carry the only membership filter the service
+                        # offers, so this is what per-module retrieval matches.
+                        topics=["convention", fact["kind"], *module_topics([path])],
                         attributes={
                             "module": path,
                             "kind": fact["kind"],
@@ -376,6 +382,28 @@ class MemoryAgent:
                 for f in outcome.findings
             ]
 
+        # A module topic that is not one of the PR's touched files can never
+        # match a retrieval filter, so the record would be written, billed, and
+        # unreachable. The model's `module` is free text: it has come back as a
+        # sentence (which the service rejected outright, since topics cap at 100
+        # chars) and as a bare basename. Resolve it, and count what will not
+        # resolve rather than dropping it quietly.
+        unrouted: list[str] = []
+        routed_rows = []
+        for row in rows:
+            modules = resolve_modules(row.get("module", ""), pr.modules)
+            if not modules:
+                # Second chance: the finding this record came from names a real
+                # file even when the distilled `module` does not.
+                by_category = {f.category: f.file for f in outcome.findings}
+                modules = resolve_modules(
+                    by_category.get(row.get("topic", ""), ""), pr.modules
+                )
+            if not modules:
+                unrouted.append(str(row.get("module", ""))[:80])
+                continue
+            routed_rows.append({**row, "module": modules[0], "modules": modules})
+
         records = [
             Memory(
                 id=memory_id("find", row["module"], row["topic"], str(ordinal)),
@@ -383,7 +411,7 @@ class MemoryAgent:
                 memory_type=REVIEW_FINDING,
                 namespace=self.memory.namespace,
                 owner_id=self.memory.owner_id,
-                topics=["finding"],
+                topics=["finding", *module_topics(row["modules"])],
                 attributes={
                     "module": row["module"],
                     "finding_class": row["pattern"],
@@ -395,9 +423,24 @@ class MemoryAgent:
                     "source": "review",
                 },
             )
-            for row in rows
+            for row in routed_rows
             if row.get("text", "").strip()
         ]
+        if unrouted:
+            # Visible in the ledger, not swallowed: this is lost recall.
+            self.memory.log_op(
+                tags,
+                "measure",
+                0,
+                returned=0,
+                notes={
+                    "unroutable_modules": unrouted,
+                    "why": (
+                        "no touched file matched; the record was dropped because a "
+                        "memory with no module topic can never be retrieved"
+                    ),
+                },
+            )
         if not records:
             return []
         created = self.memory.create(records, tags)

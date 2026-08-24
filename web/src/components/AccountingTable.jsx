@@ -26,7 +26,10 @@ const COLUMNS = [
 export function AccountingTable({ report, agent }) {
   const [sort, setSort] = useState({ key: "pr_ordinal", dir: 1 });
   const byNumber = useMemo(
-    () => Object.fromEntries((report.rows ?? []).map((r) => [r.pr_ordinal, r])),
+    // Dataset rows use the harness's field names verbatim (`ordinal`), while
+    // accounting rows use `pr_ordinal`. Joining on the wrong one silently
+    // blanks the PR number and title for every row.
+    () => Object.fromEntries((report.rows ?? []).map((r) => [r.ordinal, r])),
     [report.rows],
   );
 

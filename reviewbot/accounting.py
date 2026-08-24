@@ -20,12 +20,18 @@ import os
 import time
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
-from typing import Any, Iterable, Iterator
+from typing import Any, Iterable, Iterator, Sequence
 
 from .config import Pricing, pricing_for
 
 MODEL_CALL = "model_call"
 MEMORY_OP = "memory_op"
+# A marker row naming earlier rows that a resume superseded. The ledger is
+# append-only, so an attempt abandoned mid-PR cannot be deleted -- and it must
+# not be counted either: two review calls for one PR would report that PR's cost
+# twice. The marker keeps the spend on the record while excluding it from the
+# per-PR series, which is the only way to have both honesty and correct totals.
+ABANDONED = "abandoned"
 
 
 @dataclass(frozen=True)
@@ -128,11 +134,19 @@ class CallRecord:
     kind: str = MODEL_CALL
     seq: int = 0
     ts: float = 0.0
+    # End to end, including draining a streamed body. `ttfb_ms` is the headers-
+    # only figure; the two differ by minutes on a long review, and reporting
+    # ttfb as latency would make every streamed call look instant.
     latency_ms: int = 0
+    ttfb_ms: int = 0
 
-    # model_call fields
+    # model_call fields. model/effort/max_tokens/cache_ttl are the confound-
+    # bearing knobs, recorded per call and not only in the run manifest: a
+    # manifest states one fingerprint for the whole run, so a mid-run config
+    # change would otherwise be invisible in the very rows it applies to.
     model: str | None = None
     effort: str | None = None
+    max_tokens: int | None = None
     cache_ttl: str = "5m"
     usage: Usage = field(default_factory=Usage)
     stop_reason: str | None = None
@@ -233,6 +247,26 @@ class Ledger:
         with self.path.open("a") as fh:
             fh.write(json.dumps(rec.to_json(), sort_keys=True) + "\n")
         return rec
+
+    def mark_abandoned(self, seqs: Sequence[int], reason: str) -> CallRecord | None:
+        """Append a marker superseding `seqs`.
+
+        Called when a resume is about to redo work whose earlier attempt already
+        billed. The money was really spent, so the rows stay; the marker is what
+        keeps them out of the per-PR totals.
+        """
+        if not seqs:
+            return None
+        rec = CallRecord(
+            run_id=self.run_id,
+            agent="harness",
+            pr_id="-",
+            pr_ordinal=-1,
+            phase="review",
+            kind=ABANDONED,
+            notes={"superseded_seqs": sorted(seqs), "reason": reason},
+        )
+        return self.record(rec)
 
     def records(self) -> Iterator[CallRecord]:
         if not self.path.exists():

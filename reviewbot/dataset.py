@@ -82,6 +82,7 @@ class SequenceRow:
     ordinal: int
     pr_id: str
     pr_number: int
+    title: str
     modules: list[str]
     n_files: int
     diff_size: int
@@ -104,6 +105,7 @@ def rows(sequence: Sequence, store: PRStore) -> list[SequenceRow]:
                 ordinal=entry.ordinal,
                 pr_id=pr.pr_id,
                 pr_number=pr.number,
+                title=pr.title,
                 modules=pr.modules,
                 n_files=len(pr.files),
                 diff_size=pr.diff_size,

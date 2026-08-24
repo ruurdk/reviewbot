@@ -21,13 +21,34 @@ are enforced here rather than documented:
 2. Bulk create returns `created` AND `errors`. A 200 can still mean half the
    records were rejected, so a caller that only checks the status code will
    review PR N+1 against memories that were never stored.
-3. Scoped search uses filterOp `all` with `attributes.module: {in: [...]}`.
-   filterOp `any` would OR the namespace clause with the module clause and
-   return memories from *other runs* -- cross-run contamination that looks like
-   a working retrieval.
+3. Scoped search uses filterOp `all` with `topics: {in: [...]}` for module
+   routing. filterOp `any` would OR the namespace clause with the module clause
+   and return memories from *other runs* -- cross-run contamination that looks
+   like a working retrieval.
 4. A namespace filter's positive operators (`eq`, `in`) only match records that
    have a namespace; `ne` also matches records without one. Strict per-run
    isolation therefore means `eq`, never `ne`.
+
+Module routing rides on `topics`, not `attributes`, and that is forced by the
+service (verified live 2026-08-24, against an earlier draft of this file that
+filtered on `attributes.module`):
+
+  * An attribute clause is a typed union -- "exactly one of string, number,
+    boolean, or list must be set". There is no membership operator. `eq`, `in`,
+    `any`, `contains` and friends all fail with `unknown filter clause member`.
+  * `{"module": {"list": [a, b]}}` is NOT an IN: it compares against the whole
+    value, so a one-element list matches a scalar attribute and a two-element
+    list matches nothing. It returns 200 with zero items, which reads exactly
+    like "no memories yet" -- the failure mode this comment exists to prevent.
+  * A search response omits `attributes` entirely (only GET returns them), so
+    even post-hoc module attribution has to come from `topics`.
+  * `topics` supports `eq`, `ne`, `in`, `all` (the service enumerates them in
+    its error text), accepts raw file paths verbatim -- slashes and dots and
+    all -- and round-trips them in search results. `in` accepted 300 entries,
+    comfortably above the 78-file worst case in the frozen sequence.
+  * Unknown top-level filter keys are silently ignored: a typo'd clause returns
+    200 and an unfiltered result set. Never infer that a filter took effect
+    from the fact that the call succeeded.
 """
 
 from __future__ import annotations
@@ -52,6 +73,11 @@ MAX_TEXT_LEN = 50_000
 MAX_BULK = 100
 MAX_SEARCH_LIMIT = 100
 MAX_TOPICS = 50
+# The service rejects a topic outside 1..100 chars with
+# `Topics: (1: the length must be between 1 and 100.)` -- a 400 that names an
+# index, not a field, so it is worth catching client-side. It bit a write whose
+# module came from a model and was a sentence rather than a path.
+MAX_TOPIC_LEN = 100
 USER_AGENT = "reviewbot-demo-harness/0.1"
 
 # Width for zero-padded ordinal attributes. The store declares pr_ordinal and
@@ -198,6 +224,14 @@ class Memory:
             )
         if len(self.topics) > MAX_TOPICS:
             raise ValueError(f"memory {self.id} has {len(self.topics)} topics; max {MAX_TOPICS}")
+        for topic in self.topics:
+            if not 1 <= len(topic) <= MAX_TOPIC_LEN:
+                raise ValueError(
+                    f"memory {self.id} has a {len(topic)}-char topic; the service "
+                    f"caps topics at {MAX_TOPIC_LEN} and rejects empty ones. A topic "
+                    "this long is usually a sentence where a module path was "
+                    f"expected: {topic[:80]!r}"
+                )
 
     def to_create(self) -> dict[str, Any]:
         body: dict[str, Any] = {
@@ -252,20 +286,102 @@ def scoped_filter(
 ) -> dict[str, Any]:
     """Build the retrieval filter for one PR.
 
-    `eq` on namespace (not `ne`), and module OR-ing expressed as `in` inside a
-    single clause so the conjunction stays `all`. See the module docstring.
+    `eq` on namespace (not `ne`), and module OR-ing expressed as `topics: {in:
+    [...]}` -- the only membership operator the service offers. Attribute
+    clauses have none; see the module docstring for what that cost us.
+
+    `attributes` is still accepted here for equality-shaped extras (a single
+    module, a finding class), encoded into the typed clause the service wants.
     """
     f: dict[str, Any] = {"namespace": {"eq": validate_namespace(namespace)}}
     if memory_types:
         f["memoryType"] = (
             {"eq": memory_types[0]} if len(memory_types) == 1 else {"in": list(memory_types)}
         )
-    attrs: dict[str, Any] = dict(attributes or {})
     if modules:
-        attrs["module"] = {"in": list(modules)}
-    if attrs:
-        f["attributes"] = attrs
+        f["topics"] = {"in": module_topics(modules)}
+    if attributes:
+        f["attributes"] = {k: attribute_clause(v) for k, v in attributes.items()}
     return f
+
+
+def module_topics(paths: Sequence[str]) -> list[str]:
+    """Module paths as retrieval topics.
+
+    Raw paths, not slugs: the service stores and matches them verbatim, and an
+    exact path cannot collide the way a slug can (redis/cluster.py and
+    redis/asyncio/cluster.py slug apart, but nothing guarantees the next pair
+    does). Deduplicated and ordered so the filter is deterministic.
+
+    Over-length values are dropped rather than truncated: a truncated path
+    matches no filter, so keeping it would only disguise the loss as a topic.
+    """
+    return sorted({p for p in paths if p and len(p) <= MAX_TOPIC_LEN})
+
+
+# A memory may legitimately concern several files, so routing returns a list.
+# Capped well under MAX_TOPICS to leave room for the kind topics beside it.
+MAX_MODULE_TOPICS = 20
+
+
+def resolve_modules(candidate: str, allowed: Sequence[str]) -> list[str]:
+    """Map a model-supplied module onto the paths the PR actually touched.
+
+    Retrieval filters on exact topic equality against the touched-file set, so a
+    module outside that set is unreachable *forever* -- the memory is written,
+    costs tokens, and can never come back. Free text from a model is not a path.
+    Measured on the first real run: of six written findings, **five** named a
+    directory (`redis/commands/search`, `tests`, `repo`) and one named a file.
+
+    So a directory is resolved to every touched file beneath it rather than
+    dropped. That is not a workaround: a fact about `redis/commands/search` does
+    concern each touched file there, and a later PR touching any of them should
+    see it. Order of preference:
+
+      exact path -> unique basename -> directory prefix -> nothing
+
+    An empty result is not silently tolerated by the caller; it is counted and
+    reported, because it is lost recall.
+    """
+    if not candidate:
+        return []
+    allowed = list(allowed)
+    if candidate in allowed:
+        return [candidate]
+    tail = candidate.rsplit("/", 1)[-1]
+    basename_matches = [p for p in allowed if p.rsplit("/", 1)[-1] == tail]
+    if len(basename_matches) == 1:
+        return basename_matches
+    prefix = candidate.rstrip("/") + "/"
+    under = sorted(p for p in allowed if p.startswith(prefix))
+    if under:
+        return under[:MAX_MODULE_TOPICS]
+    return []
+
+
+def resolve_module(candidate: str, allowed: Sequence[str]) -> str | None:
+    """Single-path form of `resolve_modules`; None when it does not resolve to
+    exactly one file."""
+    resolved = resolve_modules(candidate, allowed)
+    return resolved[0] if len(resolved) == 1 else None
+
+
+def attribute_clause(value: Any) -> dict[str, Any]:
+    """Wrap a value in the service's typed attribute-filter clause.
+
+    The clause is a union with exactly one of `string`, `number`, `boolean`, or
+    `list` set. A pre-built clause is passed through so callers can express
+    something this helper does not.
+    """
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, bool):
+        return {"boolean": value}
+    if isinstance(value, (int, float)):
+        return {"number": value}
+    if isinstance(value, (list, tuple)):
+        return {"list": list(value)}
+    return {"string": str(value)}
 
 
 class AgentMemoryClient:

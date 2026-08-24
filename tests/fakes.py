@@ -12,6 +12,10 @@ import json
 from typing import Any
 
 
+class FilterRejected(Exception):
+    """The live service answers a malformed filter clause with a 400."""
+
+
 class FakeMemoryService:
     def __init__(self, *, visibility_lag: int = 0, reject_ids: set[str] | None = None):
         self.records: dict[str, dict[str, Any]] = {}
@@ -32,7 +36,16 @@ class FakeMemoryService:
             ("DELETE", "long-term-memory"): self._delete,
         }.get((method, path))
         if handler:
-            return self._ok(handler(payload))
+            try:
+                return self._ok(handler(payload))
+            except FilterRejected as exc:
+                return (
+                    400,
+                    {},
+                    json.dumps(
+                        {"title": "Invalid Request", "status": 400, "detail": str(exc)}
+                    ).encode(),
+                )
         if path.startswith("long-term-memory/") and path.endswith("/fields"):
             return self._patch_fields(path.split("/")[1], payload)
         if method == "GET" and path == "health":
@@ -80,8 +93,21 @@ class FakeMemoryService:
             return 404, {}, b'{"message":"not found"}'
         return self._ok(self.records[mid])
 
+    # Operators the live service accepts on a scalar/topics clause. It
+    # enumerates exactly these in its own error text.
+    CLAUSE_OPERATORS = ("eq", "ne", "in", "all")
+    # An attribute clause is a typed union instead: exactly one of these.
+    ATTRIBUTE_TYPES = ("string", "number", "boolean", "list")
+
     def _matches(self, rec, flt, op):
         def clause(value, spec):
+            if not isinstance(spec, dict):
+                raise FilterRejected("invalid filter clause")
+            unknown = set(spec) - set(self.CLAUSE_OPERATORS)
+            if unknown:
+                raise FilterRejected(
+                    f"unknown filter clause member: {', '.join(sorted(unknown))}"
+                )
             for key, want in spec.items():
                 if key == "eq" and value != want:
                     return False
@@ -99,14 +125,41 @@ class FakeMemoryService:
                         return False
             return True
 
+        def attribute_clause(value, spec):
+            """The typed union, with the live service's quirks intact.
+
+            No membership operator exists, and `list` is whole-value equality
+            rather than an IN -- which is why a two-element `list` matches
+            nothing. Both are modeled so a test can catch a caller that assumes
+            otherwise, as one did.
+            """
+            if not isinstance(spec, dict):
+                raise FilterRejected("invalid filter clause")
+            typed = set(spec) & set(self.ATTRIBUTE_TYPES)
+            if len(typed) != 1 or set(spec) - typed:
+                raise FilterRejected(
+                    "exactly one of string, number, boolean, or list must be set"
+                    if typed
+                    else "unknown filter clause member"
+                )
+            want = spec[typed.pop()]
+            if isinstance(want, list):
+                return [value] == want if not isinstance(value, list) else value == want
+            return value == want
+
         results = []
         for key, spec in (flt or {}).items():
             if key == "attributes":
                 for attr, aspec in spec.items():
-                    results.append(clause((rec.get("attributes") or {}).get(attr), aspec))
+                    results.append(
+                        attribute_clause((rec.get("attributes") or {}).get(attr), aspec)
+                    )
+            elif key in ("namespace", "memoryType", "ownerId", "topics", "id"):
+                results.append(clause(rec.get(key), spec))
             else:
-                wire = {"memoryType": "memoryType", "ownerId": "ownerId"}.get(key, key)
-                results.append(clause(rec.get(wire), spec))
+                # Verified live: an unknown top-level filter key is ignored, so
+                # a typo returns 200 and an unfiltered result set.
+                continue
         if not results:
             return True
         return all(results) if op != "any" else any(results)
@@ -125,7 +178,11 @@ class FakeMemoryService:
             hits.append((score, rec))
         hits.sort(key=lambda pair: (-pair[0], pair[1]["id"]))
         limit = payload.get("limit", 10)
-        return {"items": [r for _, r in hits[:limit]]}
+        # Verified live: a search response carries no `attributes` (only GET
+        # does) and no relevance score. Stripping them here is what stops a
+        # caller from reading a field that will be absent in production.
+        items = [{k: v for k, v in r.items() if k != "attributes"} for _, r in hits[:limit]]
+        return {"items": items}
 
     def _patch_fields(self, mid, payload):
         rec = self.records.get(mid)
@@ -179,6 +236,11 @@ class FakeClaude:
         }
         self.sent: list[dict] = []
         self.urls: list[str] = []
+
+    @property
+    def calls(self) -> int:
+        """Billable model calls only -- count_tokens is free and not a model call."""
+        return sum(1 for u in self.urls if not u.endswith("/count_tokens"))
 
     def transport(self, url, headers, body, timeout):
         payload = json.loads(body)

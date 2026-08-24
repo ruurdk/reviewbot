@@ -30,11 +30,11 @@ for (const row of rows) {
   const memoryCtx = diffTokens + 1200 + 1800;
   const baseOut = 900 + row.py_files * 40;
   const memOut = 850 + row.py_files * 30;
-  const baseWrite = row.pr_ordinal === 1 ? 6000 : 0;
-  const baseRead = row.pr_ordinal === 1 ? 0 : 6000;
+  const baseWrite = row.ordinal === 1 ? 6000 : 0;
+  const baseRead = row.ordinal === 1 ? 0 : 6000;
 
   perPr.push({
-    pr_ordinal: row.pr_ordinal,
+    pr_ordinal: row.ordinal,
     agent: "baseline",
     context_volume: baselineCtx,
     billed_usd:
@@ -50,7 +50,7 @@ for (const row of rows) {
     files_read: row.py_files
   });
   perPr.push({
-    pr_ordinal: row.pr_ordinal,
+    pr_ordinal: row.ordinal,
     agent: "memory",
     context_volume: memoryCtx,
     billed_usd: memoryCtx * PRICE_IN + memOut * PRICE_OUT + 0.004,
@@ -59,8 +59,8 @@ for (const row of rows) {
     by_phase: { retrieve: 1800, review: memoryCtx - 1800, write: 900 },
     tiers: {
       uncached: memoryCtx - 6000,
-      cache_write: row.pr_ordinal === 1 ? 6000 : 0,
-      cache_read: row.pr_ordinal === 1 ? 0 : 6000
+      cache_write: row.ordinal === 1 ? 6000 : 0,
+      cache_read: row.ordinal === 1 ? 0 : 6000
     },
     retrieved: 7,
     memories_used: 3

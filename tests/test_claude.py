@@ -2,11 +2,20 @@
 
 import json
 import tempfile
+import time
 import unittest
 
 from reviewbot import claude as claude_mod
-from reviewbot.accounting import Ledger
-from reviewbot.claude import ClaudeClient, ClaudeError, Refusal, Tags, prefix_id
+from reviewbot.accounting import MODEL_CALL, CallRecord, Ledger, Usage
+from reviewbot.claude import (
+    ClaudeClient,
+    ClaudeError,
+    ClaudeResult,
+    Refusal,
+    Tags,
+    Truncated,
+    prefix_id,
+)
 from reviewbot.config import ModelConfig
 
 SYSTEM = [{"type": "text", "text": "x" * 100, "cache_control": {"type": "ephemeral"}}]
@@ -273,6 +282,78 @@ class TestCountTokens(unittest.TestCase):
         n = client.count_tokens(system="s", messages=user("d"))
         self.assertEqual(n, 1234)
         self.assertTrue(seen["url"].endswith("/v1/messages/count_tokens"))
+
+
+class TestTruncationIsNamed(unittest.TestCase):
+    """A 200 that ran out of ceiling must not surface as a JSON error."""
+
+    def _result(self, stop_reason, text):
+        return ClaudeResult(
+            text=text,
+            thinking="",
+            stop_reason=stop_reason,
+            usage=Usage(input_tokens=10, output_tokens=64000),
+            record=CallRecord(
+                run_id="r",
+                agent="memory",
+                pr_id="redis/redis-py#4025",
+                pr_ordinal=1,
+                phase="review",
+                kind=MODEL_CALL,
+            ),
+        )
+
+    def test_max_tokens_raises_with_the_knob_to_turn(self):
+        with self.assertRaises(Truncated) as ctx:
+            self._result("max_tokens", '{"findings": [{"file": "a.py"').json()
+        message = str(ctx.exception)
+        self.assertIn("redis/redis-py#4025", message)
+        self.assertIn("max-tokens", message)
+        self.assertIn("64,000", message)
+
+    def test_an_empty_response_is_not_reported_as_zero_findings(self):
+        with self.assertRaises(Truncated) as ctx:
+            self._result("end_turn", "   ").json()
+        self.assertIn("zero findings it never made", str(ctx.exception))
+
+    def test_a_complete_response_still_parses(self):
+        self.assertEqual(self._result("end_turn", '{"findings": []}').json(), {"findings": []})
+
+
+class TestLatencyCoversTheWholeStream(unittest.TestCase):
+    def test_latency_is_measured_after_the_body_is_drained(self):
+        """A streamed call returns its headers immediately and its body slowly.
+
+        Measuring at header time logged a 38k-output review that took seven
+        minutes as six seconds. `ttfb_ms` keeps the headers-only figure.
+        """
+        chunks = [
+            b'event: message_start\ndata: {"type":"message_start","message":{"usage":{"input_tokens":10}}}\n\n',
+            b'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"{}"}}\n\n',
+            b'event: message_delta\ndata: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":2}}\n\n',
+        ]
+
+        def slow_stream():
+            for chunk in chunks:
+                time.sleep(0.05)  # the body arrives after the headers did
+                yield chunk
+
+        def transport(url, headers, body, timeout):
+            return 200, {}, slow_stream()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            client = ClaudeClient(
+                ModelConfig(stream=True), Ledger(tmp, "r"), api_key="t", transport=transport
+            )
+            result = client.messages(
+                Tags("memory", "pr#1", 1, "review"),
+                system=[{"type": "text", "text": "hi"}],
+                messages=[{"role": "user", "content": "hi"}],
+            )
+
+        record = result.record
+        self.assertGreaterEqual(record.latency_ms, 150)  # 3 chunks x 50ms
+        self.assertLess(record.ttfb_ms, record.latency_ms)
 
 
 if __name__ == "__main__":

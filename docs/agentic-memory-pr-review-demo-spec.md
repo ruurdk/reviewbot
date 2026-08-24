@@ -55,7 +55,7 @@ What the managed service gives us, and what the demo must build on top:
 | Two-tier memory | Session memory (ordered events) + long-term memory | Session memory holds the review conversation; long-term memory is the thing under test |
 | Long-term create | `POST /v1/stores/{storeId}/long-term-memory`, idempotent on a **client-supplied `id`** | Explicit memory writes; the client-supplied id makes reruns deterministic |
 | Retrieval | `POST /v1/stores/{storeId}/long-term-memory/search` — `text`, `similarityThreshold`, `filter`, `filterOp`, `limit` (default 10, max 100), `pageToken` | The retrieve phase; `limit` and `similarityThreshold` are the retrieval-bloat knobs (§9) |
-| Filtering | `sessionId`, `ownerId`, `namespace`, `topics`, `memoryType`, `createdAt`, and an arbitrary `attributes` map — each with `eq`/`ne`/`in`/`all` style clauses, combined with `filterOp: all\|any` | Scope retrieval to the module(s) a PR touches instead of pulling the whole store |
+| Filtering | `sessionId`, `ownerId`, `namespace`, `topics`, `memoryType`, `createdAt` take `eq`/`ne`/`in`/`all` clauses; the `attributes` map takes a *typed* clause (`string`/`number`/`boolean`/`list`) with **no membership operator**. Combined with `filterOp: all\|any` | Scope retrieval to the module(s) a PR touches instead of pulling the whole store — via `topics`, which is the only field that can express "any of these modules" (§4d) |
 | Update | `PATCH .../{memoryId}` and `PATCH .../{memoryId}/fields`, the latter guarded — the write is rejected unless the caller's `memoryType` and `namespace` match the stored record | The convention-invalidation beat (§8/§9) |
 | Delete | Bulk delete by id list on `DELETE .../long-term-memory` | Per-run store reset |
 | Custom memory types | Define domain memory types with **structured fields and extraction instructions** | This is how the three memory types below are modeled — they are first-class, not a hack |
@@ -92,12 +92,24 @@ Three memory types, because they save tokens in different ways. Each becomes a *
 Conventions for the store, so retrieval can be scoped tightly:
 - **`namespace`** — one per repo per experiment run (e.g. `repo-x-run-3`). Gives a clean per-run reset and prevents cross-run contamination. **The service validates `namespace` (and `id`) against `^[a-zA-Z0-9-]+$`**, so a slash-separated name like `repo-x/run-3` is rejected — dashes only. `memoryType` is the one field that permits underscores, so `repo_convention` is fine.
 - **`ownerId`** — the agent identity. Baseline never writes, so this is constant for the treatment agent.
-- **`topics`** — coarse routing: `convention`, `finding`, `policy`, plus a module tag.
-- **`attributes`** — the precise, filterable metadata: `module` (path prefix), `pr_ordinal` (position in the frozen sequence), `pr_number`, `finding_class` (for the recurring-pattern and false-positive beats), `convention_version` (for invalidation), `source` (`style-guide` / `human-correction` / `inferred`).
+- **`topics`** — the routing field, and the one module retrieval actually filters on: `convention`, `finding`, `policy`, **plus the raw path of every module the record concerns**.
+- **`attributes`** — provenance and reporting metadata: `module`, `pr_ordinal` (position in the frozen sequence), `pr_number`, `finding_class` (for the recurring-pattern and false-positive beats), `convention_version` (for invalidation), `source` (`style-guide` / `human-correction` / `inferred`). Readable via `GET`, usable for equality filters — but *not* for the module fan-out, per the next paragraph.
 
-Retrieval for a given PR is then a scoped search: text query built from the diff's touched modules and change summary, filtered to the run namespace with `attributes.module` in the PR's touched-module set, and a `limit` tuned in §9 — not an unfiltered semantic sweep.
+Retrieval for a given PR is then a scoped search: text query built from the diff's touched modules and change summary, filtered to the run namespace with `topics` in the PR's touched-module set, and a `limit` tuned in §9 — not an unfiltered semantic sweep.
 
-**Use `filterOp: all`, not `any`.** The conjunction is global: `any` ORs the namespace clause with the module clause, so a memory from *another run* that happens to touch the same module satisfies the filter and comes back. That is cross-run contamination which looks exactly like working retrieval. The module set is OR-ed *within* one clause instead — `attributes.module: {in: [...]}` — which keeps the namespace isolation strict. Relatedly, isolate with `eq`/`in` and never `ne`: the positive operators require the field to be present, while `ne` also matches records that have no namespace at all.
+**Module routing must use `topics`, not `attributes` — verified live 2026-08-24.** An earlier draft of this spec said to filter with `attributes.module: {in: [...]}`. The service rejects that with `400 unknown filter clause member`, and every retrieval in the first real run failed on it. An attribute clause is a *typed union* — "exactly one of string, number, boolean, or list must be set" — and offers no membership operator at all. The trap is `list`: `{"module": {"list": [a, b]}}` is whole-value equality, not an IN, so it returns **200 with zero items**, which is indistinguishable from "nothing written yet". `topics` supports `eq`/`ne`/`in`/`all`, accepts raw file paths verbatim (slashes and dots included), round-trips them in search results, and accepted a 300-entry `in` list — comfortably above the 78-file worst case in the frozen sequence. Two related facts from the same probe: **a search response carries no `attributes`** (only `GET` does) and no relevance score, so anything computed from retrieved memories must read `topics` or the id; and **an unknown top-level filter key is silently ignored**, so a typo'd clause returns 200 and an unfiltered result set.
+
+**Use `filterOp: all`, not `any`.** The conjunction is global: `any` ORs the namespace clause with the module clause, so a memory from *another run* that happens to touch the same module satisfies the filter and comes back. That is cross-run contamination which looks exactly like working retrieval. The module set is OR-ed *within* the single `topics` clause instead, which keeps the namespace isolation strict. Relatedly, isolate with `eq`/`in` and never `ne`: the positive operators require the field to be present, while `ne` also matches records that have no namespace at all.
+
+**A model-generated routing key must be validated against a closed set.** The write phase asks Claude to distill findings into records, and one field of that record is the `module` the fact belongs to — which is the retrieval key, matched by exact string equality. Free text from a model is not a path. Measured on the first real run: of six written findings, **five** named a directory (`redis/commands/search`, `tests`, `repo`) and one named a file. All six wrote successfully, and five of them could never be retrieved by any scoped search — written, billed, and dead, with nothing in the harness to say so, because the write returned 200.
+
+Three rules follow, all now enforced in `agents.write()` and `memory.resolve_modules()`:
+
+- **Resolve, do not trust.** A candidate is matched against the PR's touched files: exact path, then unique basename, then directory prefix. A directory resolves to *every* touched file beneath it — a fact about `redis/commands/search` genuinely concerns each touched file there, and a later PR touching any of them should see it. This converts the commonest failure into correct routing rather than a dropped record.
+- **Never guess between candidates.** A bare `connection.py` when both `redis/connection.py` and `redis/asyncio/connection.py` were touched resolves to *nothing*. Routing a memory to the wrong module is worse than not routing it, because a wrong module surfaces the fact in reviews where it does not apply.
+- **Report what will not resolve.** An unroutable record is dropped *and* logged to the ledger as lost recall. Silence here would show up as "memory did not help on PR 9" — a quality result attributed to the design rather than to a bug.
+
+Audit it from outside the harness with `python3 tools/inspect_namespace.py <namespace>`, which re-derives the touched-file set from the frozen sequence and checks every written record against it. Note that a single unfiltered search caps at 100 records, so it filters by `memoryType` and follows `pageToken` — the first version of that check missed the findings entirely behind ~100 primed conventions and reported clean.
 
 ### 4e. The repo-knowledge primer: making repo understanding a one-time cost
 
@@ -106,7 +118,7 @@ Before a reviewer can judge a diff it has to know what the repo *is* — archite
 **The primer turns that recurring cost into a one-time cost per repo.** It is a distinct phase, run once against the frozen repo state before the sequence starts:
 
 1. Read the style guide / CONTRIBUTING doc and the spine modules (`connection.py`, `cluster.py`, `asyncio/cluster.py`, `commands/core.py`).
-2. Distill them into `repo_convention` memories — architecture notes, module responsibilities, conventions, invariants — one record per durable fact, each tagged with `attributes.module` so per-PR retrieval can pull just the relevant slice.
+2. Distill them into `repo_convention` memories — architecture notes, module responsibilities, conventions, invariants — one record per durable fact, each carrying its module path as a **topic** (and in `attributes.module` for provenance) so per-PR retrieval can pull just the relevant slice.
 3. Write them with client-supplied ids, so re-priming the same repo is idempotent and a re-run reproduces the same record set exactly.
 
 Per-PR, the memory agent then retrieves the slice for the touched modules instead of re-reading source. Repo understanding is paid for once and read cheaply thereafter; the baseline keeps paying full price per PR. **That gap is the thing the demo measures.**
@@ -261,6 +273,13 @@ Report the two separately and never average them into one number. State the subs
 
 Because 7 of 20 sampled PRs had zero inline human comments, the proxy has a known blind spot: it cannot distinguish "the agent said nothing useful" from "the humans said nothing either." Note that limitation where the proxy is reported.
 
+**What the frozen gold set actually contains, and what that permits.** 6 labelled defects and 3 false-positive traps across 7 PRs; 4 of the 7 carry no labelled defect (they exist for the trap and convention-change beats). So **recall is computed over 3 PRs and 6 defects** — one finding moves it by roughly 17 points. Two consequences for how the quality panel must be read and presented:
+
+- **Report it as a guardrail, not a metric.** The question this set can answer is "did review quality collapse while tokens fell?", which is the question §7 asks. It cannot support a claim that one agent's recall beats the other's by a few points, and presenting it that way invites exactly the objection the panel exists to pre-empt.
+- **Precision and false-positive rate are firmer than recall.** Every finding either matches a label or does not, so both agents' denominators are their own output, not the label count. The trap count (`traps_flagged / traps_total`) is the sharpest number in the panel: it is a direct, countable behaviour with a known correct answer of zero.
+
+Widening the gold set is the single highest-value manual task left on this project, and it needs a human who is not the model under test.
+
 ### 7d. Compressed replay makes the baseline look cheaper than it is
 
 The sequence replays 15-25 PRs in minutes. Real PRs arrive hours or days apart. With prompt caching enabled, that compression hands the **baseline** a cache-hit rate it would never see in production: its style-guide-and-spine prefix stays warm across consecutive PRs inside the 5-minute (or 1-hour) TTL, so it re-reads the same context at ~0.1x instead of 1x.
@@ -283,7 +302,15 @@ Two mitigations, both in the harness:
 - **Run the memory agent first on every PR.** The free ride then falls to the baseline, so the bias runs *against* the thesis. A skeptical audience will accept a conservative bias; it will not accept a convenient one.
 - **Quantify it.** The run report includes cache-read tokens each agent received on a prefix it never wrote, and the production-equivalent series prices them out entirely, since its cache provenance is tracked per agent.
 
-Runs are also strictly **sequential** — concurrent requests cannot share a cache entry, so a parallel run would report cache misses as context volume.
+Runs are also strictly **sequential** — concurrent requests cannot share a cache entry, so a parallel run would report cache misses as context volume. This is enforced by a lockfile (`runs/<id>/run.lock`), not by discipline: four processes once executed one sequence concurrently, primed four times over, and interleaved rows in the append-only ledger under duplicate `seq` values before it was noticed.
+
+**Measured 2026-08-24: in this run, the free ride never happens, because the cache expires first.** A single `xhigh` review of a 200k-token prompt takes six to eight minutes wall-clock, so consecutive calls on the same PR are **6.2 minutes apart** against a **5-minute** cache TTL. Both agents therefore *write* the shared 7,066-token prefix and neither reads it: measured cross-agent free-riding is zero, and `cache_integrity()` reports "wrote N cache tokens and read none" for both.
+
+Three consequences, all worth stating plainly rather than tidying away:
+
+1. **The mitigations above are correct but inert here.** Running memory first still aims the bias against the thesis; there is simply no bias to aim.
+2. **The as-measured and production-equivalent series converge**, because §7d repricing only bites on cross-PR cache *reads* and there are none. That removes the single biggest objection to a compressed replay — the baseline is not getting unrealistic cache hits, because nothing is getting cache hits.
+3. **It is direct evidence for the argument in §3.** The claim there is that prompt caching cannot substitute for memory because real PR cadence exceeds the maximum TTL. The stronger version, measured: caching does not survive even a *back-to-back* replay of two reviews of the same PR. The 1-hour TTL would cover this gap, at a 2x write premium — but a run that has to buy the long TTL to keep a prefix warm between two consecutive calls is not evidence that caching solves the per-PR cost problem.
 
 ## 8. Demo narrative (what the viewer sees)
 

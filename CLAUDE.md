@@ -4,15 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository state
 
-[docs/agentic-memory-pr-review-demo-spec.md](docs/agentic-memory-pr-review-demo-spec.md) is the source of truth for what this project is — read it before changing anything. Build order is spec §10; the harness (step 1) exists, steps 2–8 do not.
+[docs/agentic-memory-pr-review-demo-spec.md](docs/agentic-memory-pr-review-demo-spec.md) is the source of truth for what this project is — read it before changing anything. Build order is spec §10.
 
-Built (steps 1, 3, 4, 5, and the offline half of 6/7): the shared harness, both agents, the primer, the Agent Memory client, quality scoring, and the sequence runner — 119 tests, none of which need network or credentials.
+**Built and verified against the live services** (steps 1–7): the shared harness, both agents, the primer, the Agent Memory client, quality scoring, the sequence runner, the frozen 19-PR dataset with 7 gold-labelled PRs, the provisioned store, and the replay page — 167 tests, none of which need network or credentials.
 
-Not built: the redis-ui replay page (§10 step 8 — blocked, no node/npm here), `review_policy` memories (spec says procedural last), store provisioning on Redis Cloud, and the curated sequence itself plus its gold labels (both need `GITHUB_TOKEN`). Not built yet: the memory client and store provisioning, the primer, the two agents, the curated sequence itself, the quality labeling, and the replay page.
+**Not built:** `review_policy` memories, i.e. procedural memory (the spec sequences it last, and nothing depends on it). Memory invalidation for the convention-change beat is also absent — spec §6 says to keep that PR and disclose the gap rather than drop it.
+
+**In flight:** the first full run (`runs/run-1`). Until a real `report.json` exists, `web/` renders a synthetic fixture, and the gold labels are `CANDIDATE` — written by Claude, which is the model family under evaluation.
 
 ## Stack: Python 3.12, standard library only
 
-**This machine has no package manager.** No pip, no ensurepip, no venv module, and `files.pythonhosted.org` is blocked by the sandbox — so nothing can be installed, including the `anthropic` and Redis Agent Memory SDKs the spec calls for. There is no node/npm either, which is why the redis-ui page cannot be built here yet.
+**This machine has no package manager.** No pip, no ensurepip, no venv module, and `files.pythonhosted.org` is blocked by the sandbox — so nothing can be installed, including the `anthropic` and Redis Agent Memory SDKs the spec calls for. (node/npm *are* installed now, which is what unblocked the replay page; Python remains stdlib-only.)
+
+**`api.anthropic.com` is not in the tool sandbox's allowlist.** Any command that reaches the Messages API — `run`, or a probe script — fails with `URLError: Tunnel connection failed: 403 Forbidden` until it is run with `dangerouslyDisableSandbox`. The memory store's host and `github.com` are allowed, so `memcheck`, `ingest` and `curate` work inside the sandbox.
 
 So the harness is stdlib-only, and every external surface is isolated behind one thin client that a SDK can replace without touching anything above it:
 
@@ -33,11 +37,17 @@ python3 -m reviewbot curate --pages 2 --target 18     # scan, select, freeze + i
 python3 -m reviewbot memcheck                        # is the memory store provisioned and usable?
 python3 -m reviewbot beats --pr 4114 --add recurring_bug --gold   # assign a beat / gold flag
 python3 -m reviewbot dataset validate|table|summary  # check/describe the frozen sequence
-python3 -m reviewbot run <run-id> --checkout ../redis-py   # execute the sequence (needs keys)
+python3 -m reviewbot run <run-id> --checkout .checkouts/redis-py   # execute the sequence (needs keys)
 python3 -m reviewbot report runs/<run-id>            # headline numbers + summary.json
 ```
 
-`run --checkout <path>` reads source from a local redis-py clone via `git show <sha>:<path>`, so only the PR *metadata* needs a GitHub token, not the file contents.
+`run --checkout <path>` reads source from a local redis-py clone via `git show <sha>:<path>`, so only the PR *metadata* needs a GitHub token, not the file contents. Clone it to `.checkouts/redis-py` (gitignored); `/home/ruurd` outside this repo is read-only here.
+
+**A run is a multi-hour, real-money operation. Three things protect it, all learned the hard way:**
+
+- **`runs/<id>/run.lock` refuses a second process.** Concurrency corrupts a run three ways that do not announce themselves: interleaved ledger rows under duplicate `seq`, a re-paid primer writing the same namespace, and — worst — requests that cannot share a prompt cache entry, so cache misses get recorded as context volume. Four processes once ran one sequence at once because `ps` inside the tool sandbox could not see them; **check for a live run with `dangerouslyDisableSandbox`, or the process list will look empty when it is not**.
+- **`runs/<id>/checkpoint.jsonl` + `primed.json` make a rerun resume.** Each PR is appended as it completes and the primer is never re-paid. A PR whose agents did not all finish is redone, not reported half-measured. Resumed PRs are disclosed in the report's warnings.
+- **Never re-use a run directory across a config change.** The manifest states one fingerprint for the whole run; rows from an older config would silently sit under it. `CallRecord` now carries `model`/`effort`/`max_tokens`/`cache_ttl` per row so such a mismatch is at least visible, but the fix is a clean run dir and a wiped namespace.
 
 Tests use `unittest` with injected transports — they never touch the network, so they run without any credentials at all. Keep it that way: a test that needs a key is a test nobody runs. There is no linter or formatter available; match the surrounding style by hand.
 
@@ -62,19 +72,19 @@ The accounting layer is not bookkeeping around the experiment, it *is* the exper
 
 | File | Enforces |
 |---|---|
-| [reviewbot/config.py](reviewbot/config.py) | One `ModelConfig` for both agents. `fingerprint()` goes in every run manifest and `assert_comparable()` raises `ConfoundError` on a mismatch. Rejects `budget_tokens` and `thinking: disabled` at `xhigh`. Carries pricing and the per-model cache minimum. |
-| [reviewbot/accounting.py](reviewbot/accounting.py) | `Usage.context_volume` is the *sum* of the three input fields, so `input_tokens` can't be reported as prompt size. `CallRecord` requires `{agent, pr_id, pr_ordinal, phase}`. Memory ops are `billable=False` with `injected_tokens` as attribution only — adding them to a total double-counts. Ledger is append-only JSONL and resumes `seq`. |
-| [reviewbot/claude.py](reviewbot/claude.py) | Tagging is a required argument. `prefix_id()` hashes the prefix up to the last `cache_control` breakpoint; a repeat with zero `cache_read` raises a cache warning. Refusals and `max_tokens` truncation are surfaced, never silently logged as an empty review. |
+| [reviewbot/config.py](reviewbot/config.py) | One `ModelConfig` for both agents, and **the only place a default lives** — `cli.py` derives its argparse defaults from `ModelConfig()`, because a literal there silently shadows the dataclass (raising `max_tokens` to 64000 changed nothing, and the run truncated at 32000 anyway). `fingerprint()` goes in every run manifest and `assert_comparable()` raises `ConfoundError` on a mismatch. Rejects `budget_tokens` and `thinking: disabled` at `xhigh`. `max_tokens` is 96000: at `xhigh` the largest PR's review spent 32000 on thinking plus findings and stopped mid-finding, and headroom is nearly free (output bills per token generated, and the ceiling does not itself make the model verbose — effort does). |
+| [reviewbot/accounting.py](reviewbot/accounting.py) | `Usage.context_volume` is the *sum* of the three input fields, so `input_tokens` can't be reported as prompt size. `latency_ms` covers draining a streamed body and `ttfb_ms` is the headers-only figure — they differ by *minutes* on a long review, so reporting time-to-first-byte as latency makes every streamed call look instant. **Rows in `runs/run-1` predate this fix and carry TTFB in `latency_ms`; they have no `ttfb_ms` at all, which is how to spot them.** `CallRecord` requires `{agent, pr_id, pr_ordinal, phase}`. Memory ops are `billable=False` with `injected_tokens` as attribution only — adding them to a total double-counts. Ledger is append-only JSONL and resumes `seq`. |
+| [reviewbot/claude.py](reviewbot/claude.py) | Tagging is a required argument. `prefix_id()` hashes the prefix up to the last `cache_control` breakpoint; a repeat with zero `cache_read` raises a cache warning. `ClaudeResult.json()` raises `Truncated` — naming the PR, the token count and the knob — for both a `max_tokens` stop and an empty body, because `output_config.format` guarantees valid JSON only for a *completed* response. Reporting either as an empty review would credit an agent with zero findings it never made. |
 | [reviewbot/analysis.py](reviewbot/analysis.py) | The §7d repricing rule, stated in code: a cache read whose prefix was written under a *different* PR ordinal is charged at 1.0x, applied to **both** agents. `breakeven_ordinal()` ignores a crossing that reverses. `cache_integrity()` is the pre-flight before trusting any cost number. |
 | [reviewbot/review.py](reviewbot/review.py) | **One** frozen `SYSTEM_PROMPT` for both agents — it names the optional "Prior knowledge" section so its bytes don't change when memories are absent. Stable blocks (conventions) precede the breakpoint; per-PR source, memories, and the diff follow it. `Finding`/`FINDINGS_SCHEMA` make gold-set comparison mechanical, and `memories_used` is the retrieval-precision signal. |
 | [reviewbot/github.py](reviewbot/github.py) | `GITHUB_TOKEN` required (not optional); every response cached by URL; file reads take a pinned SHA, never a branch. Bot comments flagged so the proxy metric can exclude them. |
 | [reviewbot/dataset.py](reviewbot/dataset.py) | `validate()` fails on a missing beat, a beat with no gold label, a gold subset outside 5–8, an unpinned SHA, or an empty selection rule. `disclosure_table()` computes recurrence from the data instead of asserting it. |
 
 | [reviewbot/repo.py](reviewbot/repo.py) | Source reads always take a pinned SHA. `LocalSourceProvider` uses `git show <sha>:<path>` so a dirty working tree cannot silently change the frozen dataset; it records `fell_back_to_worktree` when git is unavailable. Read counts are tracked, so "how much did the baseline read" is measured. |
-| [reviewbot/agents.py](reviewbot/agents.py) | The only difference between the agents is `volatile_blocks`. The primer runs one call per module (so re-priming one changed module doesn't re-pay for the rest) at `pr_ordinal=0`, and writes with deterministic ids for idempotence. Write-phase distillation is a measured model call; `distill_writes=False` gives a zero-model-token variant. Chronology rides in `attributes.pr_ordinal` because `createdAt` is server-assigned. |
-| [reviewbot/memory.py](reviewbot/memory.py) | Enforces the four Agent Memory constraints that silently corrupt runs: the `^[a-zA-Z0-9-]+$` id/namespace pattern, bulk-create `errors` (a 200 can still mean half the writes failed), `filterOp: all` + `module: {in: […]}` for retrieval, and `eq`-not-`ne` namespace isolation. `wait_for_visibility()` polls for eventual consistency and logs the wait as excluded from latency. |
+| [reviewbot/agents.py](reviewbot/agents.py) | **A model-generated `module` is resolved against the PR's touched files before it becomes a topic** (`memory.resolve_modules`): exact path, then unique basename, then every touched file under a named directory. Free text from a model is not a path — on the first real run 5 of 6 written findings named a directory, wrote successfully, and were unretrievable forever. An ambiguous basename resolves to *nothing* rather than guessing, and anything unresolvable is dropped **and logged** as lost recall. The only difference between the agents is `volatile_blocks`. The primer runs one call per module (so re-priming one changed module doesn't re-pay for the rest) at `pr_ordinal=0`, and writes with deterministic ids for idempotence. Write-phase distillation is a measured model call; `distill_writes=False` gives a zero-model-token variant. Chronology rides in `attributes.pr_ordinal` because `createdAt` is server-assigned. |
+| [reviewbot/memory.py](reviewbot/memory.py) | Enforces the four Agent Memory constraints that silently corrupt runs: the `^[a-zA-Z0-9-]+$` id/namespace pattern, bulk-create `errors` (a 200 can still mean half the writes failed), `filterOp: all` + `topics: {in: […]}` for module retrieval (attribute clauses have no membership operator), and `eq`-not-`ne` namespace isolation. `wait_for_visibility()` polls for eventual consistency and logs the wait as excluded from latency. |
 | [reviewbot/quality.py](reviewbot/quality.py) | Two scores that are never averaged. Gold labels carry `must_not_flag` items, which is what makes the false-positive trap measurable. Blind PRs (no human comments) are excluded from proxy ratios rather than scored zero. |
-| [reviewbot/runner.py](reviewbot/runner.py) | Sequential execution, and the **memory agent runs first on every PR** — both agents share one cache entry, so the second to run free-rides on the other's cache write; putting memory first aims that bias against the thesis. |
+| [reviewbot/runner.py](reviewbot/runner.py) | Sequential execution — enforced by `single_process()`, not just documented — and the **memory agent runs first on every PR**: both agents share one cache entry, so the second to run free-rides on the other's cache write, and putting memory first aims that bias against the thesis. Checkpoints each PR as it completes and skips a completed primer, so a rerun resumes instead of re-paying. |
 
 `data/sequence.example.json` is the manifest template; it deliberately fails `dataset validate` until real PR numbers and a pinned SHA replace the placeholders. `data/gold/README.md` documents the label format.
 
@@ -92,13 +102,31 @@ Corrections to earlier claims, from the installed packages: **there is no `Table
 
 Series colours are **two chromatic hues** (`discovery400` + `primary400`), not the gray-plus-brand emphasis pairing recorded earlier — emphasis fails the dark-mode lightness band, because no redis-ui neutral light enough to read as a line sits inside it. The phase stack is graded with `validateOrdinal`, not the categorical checks.
 
-`npm run smoke` renders the page in jsdom and asserts 15 viewer-visible properties. It caught a hooks-order violation and three wrong component APIs that `vite build` accepted silently — do not delete it.
+`npm run smoke` renders the page in jsdom and asserts 24 viewer-visible properties — do not delete it. It has now caught a hooks-order violation and **four** wrong component APIs that `vite build` accepted silently, the latest being `Badge`, which takes a `label` string and renders children as nothing: the run id and config fingerprint, i.e. the provenance of every number on the page, were silently absent.
+
+The smoke test renders **twice**: once with `fetch` rejecting (the synthetic fallback and its banner) and once against `web/scripts/fixtures/report-real.json`, a report the *harness* produced — regenerate it with `python3 tools/make_page_fixture.py runs/<id>`. Covering only the synthetic path is how `report.per_pr` came to be missing from the harness while every check passed; a real run would have rendered a broken page. It also clicks through all four acts, because an act renders only while selected, so a broken chart or table in acts 2–4 is otherwise invisible.
+
+**The report's shape is a contract**, asserted from both sides: `tests/test_runner.py::TestReplayPageContract` lists the exact fields `web/src/data/contract.js` reads. Dataset rows keep the harness's field names (`ordinal`, `n_files`), while accounting rows use `pr_ordinal` — joining on the wrong one silently blanks the PR number and title for every row.
 
 ## The frozen dataset
 
 19 PRs in `data/sequence.json`, all ingested and cached; 7 hand-labelled in `data/gold/`. Beats, evidence, and caveats: [docs/sequence-beats.md](docs/sequence-beats.md). `tests/test_frozen_dataset.py` guards the sequence and labels against drift (a gold-flagged PR with no label file, a trap beat with no `must_not_flag` item, a trap file that only one PR touches, labels claiming confirmed provenance).
 
 Two things not to redo from an older draft: **`README.md` is not convention-change evidence** (a version-badge edit auto-tagged three PRs with a fake invalidation beat before this was narrowed to `CONTRIBUTING.md` + `specs/redis_commands_guide.md`), and the **gold labels are `CANDIDATE`** — written by Claude, which is the same model family under evaluation, so they need a human pass before any quality number is quoted.
+
+## Audit what a run wrote, from outside the harness
+
+```bash
+python3 tools/inspect_namespace.py redis-py-run-1
+```
+
+Re-derives the touched-file set from the frozen sequence and checks every written memory against it. A write that returns 200 proves nothing about retrievability: a module topic outside the touched set can never match a scoped search. **Filter by `memoryType` and follow `pageToken`** — an unfiltered search caps at 100 records, and the first version of this check found ~100 primed conventions, never reached the findings, and reported clean.
+
+## Prompt caching is inert in this run, and that is a finding
+
+Measured in `runs/run-1`: an `xhigh` review of a 200k-token prompt takes 6-8 minutes, so the two agents' calls on one PR land **6.2 minutes apart** against the **5-minute** TTL. Both write the shared 7,066-token prefix; neither reads it. So `cache_integrity()` legitimately reports "wrote N cache tokens and read none" for both agents, `shared_prefix_freeriding()` is empty, and the as-measured and production-equivalent series converge.
+
+Do not "fix" this by reaching for `--cache-ttl 1h`. It costs a 2x write premium, reintroduces the free-riding the run order is designed to bias against, and makes the replay *less* like production. The zero-read result is worth more than the saved tokens: it is evidence for spec §3's claim that caching cannot substitute for memory — caching did not survive two back-to-back reviews of the same PR, never mind a real PR cadence. See spec §7e.
 
 ## Verified against the live services
 
@@ -116,6 +144,7 @@ Both were verified against the saved Agent Memory OpenAPI and are now fixed in t
 
 - A namespace like `repo-x/run-3` is **rejected** by the service (pattern is dashes only). Use `repo-x-run-3`.
 - Retrieval must use `filterOp: all`, not `any`. With `any`, the namespace clause is OR-ed with the module clause, so a memory from another run touching the same module comes back — cross-run contamination that looks like working retrieval.
+- **Module routing filters on `topics`, not `attributes`** (found by the first real run, 2026-08-24). `attributes.module: {in: […]}` is a `400 unknown filter clause member`: an attribute clause is a typed union (`string`/`number`/`boolean`/`list`) with no membership operator, and its `list` variant is whole-value equality — a two-element list returns 200 with zero items, indistinguishable from an empty store. `topics` takes `eq`/`ne`/`in`/`all`, holds raw file paths verbatim, and accepted a 300-entry `in`. Also: **search responses omit `attributes`** (only `GET` returns them) and carry no relevance score, so read `topics` or the id for anything computed from retrieved memories.
 
 ## What this project is
 

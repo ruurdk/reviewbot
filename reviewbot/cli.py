@@ -438,9 +438,17 @@ def build_parser() -> argparse.ArgumentParser:
         default=os.environ.get("REDIS_AGENT_MEMORY_STORE_ID", ""),
         help="Agent Memory store id from Redis Iris (default: $REDIS_AGENT_MEMORY_STORE_ID)",
     )
-    run.add_argument("--effort", default="xhigh", choices=["low", "medium", "high", "xhigh", "max"])
-    run.add_argument("--max-tokens", type=int, default=32000)
-    run.add_argument("--cache-ttl", default="5m", choices=["5m", "1h"])
+    # Defaults come from ModelConfig, never repeated here. A literal in this
+    # file shadows the dataclass silently: raising ModelConfig.max_tokens to
+    # 64000 changed nothing, and the run truncated at 32000 anyway.
+    defaults = ModelConfig()
+    run.add_argument(
+        "--effort",
+        default=defaults.effort,
+        choices=["low", "medium", "high", "xhigh", "max"],
+    )
+    run.add_argument("--max-tokens", type=int, default=defaults.max_tokens)
+    run.add_argument("--cache-ttl", default=defaults.cache_ttl, choices=["5m", "1h"])
     run.add_argument("--no-cache", action="store_true", help="disable prompt caching on BOTH agents")
     run.add_argument("--retrieval-limit", type=int, default=20)
     run.add_argument("--similarity-threshold", type=float, default=None)

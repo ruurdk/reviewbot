@@ -61,3 +61,31 @@ labels, a figure caption, a real heading hierarchy, clean axis labels, and the
 single-scale-per-figure rule. It caught four genuine bugs that a successful
 `vite build` did not: a React hooks-order violation, and three wrong redis-ui
 component APIs.
+
+## The smoke test renders twice
+
+`npm run smoke` builds an IIFE bundle, evaluates it in jsdom, and asserts what a
+viewer would actually see. It runs the page against two data sources:
+
+1. **`fetch` rejecting** — the synthetic fallback, whose banner must be present.
+2. **`scripts/fixtures/report-real.json`** — a report the harness produced, whose
+   banner must be *gone* and whose PR numbers, bars and table rows must appear.
+
+Only the first existed for a while, which is exactly how the harness's report
+came to lack the `per_pr` array `src/data/contract.js` reads: every check passed
+and a real run would have rendered a broken page. Regenerate the fixture from any
+completed run:
+
+```bash
+python3 tools/make_page_fixture.py runs/<run-id>     # from the repo root
+```
+
+The test also clicks through all four acts. An act renders only while selected,
+so a broken chart or table in acts 2-4 is invisible to a first-paint assertion.
+
+Component APIs this has caught, none of which `vite build` objects to: a
+hooks-order violation (React #310), `Tabs` not being Radix-shaped, `Banner`
+having no `"warning"` variant, `Switch` using `onCheckedChange` -- and `Badge`,
+which takes a `label` string and **silently renders nothing** when handed
+children, which is how the run id and config fingerprint disappeared from the
+header.

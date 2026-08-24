@@ -11,8 +11,12 @@ data/prs/
 # Run ledgers: the frozen run is committed deliberately, drafts are not.
 runs/*/
 !runs/frozen/
+runs/*.log
 
 # web app build output and deps
 web/node_modules/
 web/dist/
 web/dist-smoke/
+
+# Local redis-py clone for --checkout source reads (reproducible: git clone).
+.checkouts/

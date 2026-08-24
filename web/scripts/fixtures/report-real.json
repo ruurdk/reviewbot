@@ -1,0 +1,517 @@
+{
+  "accounting": {
+    "agents": {
+      "baseline": {
+        "billed_usd": 1.9937710000000002,
+        "billed_usd_production": 2.0573650000000003,
+        "calls": 2,
+        "context_volume": 285533,
+        "cross_pr_read_tokens": 14132,
+        "memory_overhead_usd": 0,
+        "output_tokens": 25188,
+        "truncated_calls": 0
+      },
+      "memory": {
+        "billed_usd": 3.2264505000000003,
+        "billed_usd_production": 3.2582475000000004,
+        "calls": 7,
+        "context_volume": 352213,
+        "cross_pr_read_tokens": 7066,
+        "memory_overhead_usd": 2.52801,
+        "output_tokens": 59534,
+        "truncated_calls": 0
+      }
+    },
+    "breakeven": {
+      "as_measured": null,
+      "production_equivalent": null
+    },
+    "cache_integrity": [],
+    "per_pr": [
+      {
+        "agent": "baseline",
+        "billed_usd": 0.7109380000000001,
+        "billed_usd_production": 0.742735,
+        "by_phase": {
+          "review": 128962
+        },
+        "calls": 1,
+        "context_volume": 128962,
+        "cross_pr_read_tokens": 7066,
+        "injected_tokens": 0,
+        "memories_returned": 0,
+        "memory_overhead_usd": 0,
+        "output_tokens": 3917,
+        "pr_id": "redis/redis-py#4059",
+        "pr_ordinal": 1,
+        "tiers": {
+          "cache_read": 7066,
+          "cache_write": 0,
+          "uncached": 121896
+        },
+        "truncated_calls": 0
+      },
+      {
+        "agent": "baseline",
+        "billed_usd": 1.2828330000000001,
+        "billed_usd_production": 1.3146300000000002,
+        "by_phase": {
+          "review": 156571
+        },
+        "calls": 1,
+        "context_volume": 156571,
+        "cross_pr_read_tokens": 7066,
+        "injected_tokens": 0,
+        "memories_returned": 0,
+        "memory_overhead_usd": 0,
+        "output_tokens": 21271,
+        "pr_id": "redis/redis-py#4054",
+        "pr_ordinal": 2,
+        "tiers": {
+          "cache_read": 7066,
+          "cache_write": 0,
+          "uncached": 149505
+        },
+        "truncated_calls": 0
+      },
+      {
+        "agent": "memory",
+        "billed_usd": 2.48633,
+        "billed_usd_production": 2.48633,
+        "by_phase": {
+          "prime": 310191
+        },
+        "calls": 4,
+        "context_volume": 310191,
+        "cross_pr_read_tokens": 0,
+        "injected_tokens": 0,
+        "memories_returned": 204,
+        "memory_overhead_usd": 2.48633,
+        "output_tokens": 37415,
+        "pr_id": "prime",
+        "pr_ordinal": 0,
+        "tiers": {
+          "cache_read": 0,
+          "cache_write": 0,
+          "uncached": 310191
+        },
+        "truncated_calls": 0
+      },
+      {
+        "agent": "memory",
+        "billed_usd": 0.1368625,
+        "billed_usd_production": 0.1368625,
+        "by_phase": {
+          "review": 16776
+        },
+        "calls": 1,
+        "context_volume": 16776,
+        "cross_pr_read_tokens": 0,
+        "injected_tokens": 3029,
+        "memories_returned": 40,
+        "memory_overhead_usd": 0,
+        "output_tokens": 1766,
+        "pr_id": "redis/redis-py#4059",
+        "pr_ordinal": 1,
+        "tiers": {
+          "cache_read": 0,
+          "cache_write": 7066,
+          "uncached": 9710
+        },
+        "truncated_calls": 0
+      },
+      {
+        "agent": "memory",
+        "billed_usd": 0.6032580000000001,
+        "billed_usd_production": 0.6350550000000001,
+        "by_phase": {
+          "review": 24005,
+          "write": 1241
+        },
+        "calls": 2,
+        "context_volume": 25246,
+        "cross_pr_read_tokens": 7066,
+        "injected_tokens": 3065,
+        "memories_returned": 48,
+        "memory_overhead_usd": 0.04168,
+        "output_tokens": 20353,
+        "pr_id": "redis/redis-py#4054",
+        "pr_ordinal": 2,
+        "tiers": {
+          "cache_read": 7066,
+          "cache_write": 0,
+          "uncached": 18180
+        },
+        "truncated_calls": 0
+      }
+    ],
+    "phases": [
+      "prime",
+      "retrieve",
+      "review",
+      "write"
+    ],
+    "primer": {
+      "primer_calls": 4,
+      "primer_context_volume": 310191,
+      "primer_usd": 2.48633,
+      "primer_usd_per_pr": 1.243165,
+      "prs": 2
+    },
+    "shared_prefix_freeriding": {
+      "baseline": 14132
+    }
+  },
+  "config_fingerprint": "e2f9712728313b0d",
+  "per_pr": [
+    {
+      "agent": "baseline",
+      "billed_usd": 0.7109380000000001,
+      "billed_usd_production": 0.742735,
+      "by_phase": {
+        "review": 128962
+      },
+      "calls": 1,
+      "context_volume": 128962,
+      "cross_pr_read_tokens": 7066,
+      "files_dropped_over_budget": 2,
+      "files_read": 4,
+      "findings": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "memories_used": 0,
+      "memory_overhead_usd": 0,
+      "output_tokens": 3917,
+      "pr_id": "redis/redis-py#4059",
+      "pr_ordinal": 1,
+      "retrieval_precision": null,
+      "retrieved": 0,
+      "tiers": {
+        "cache_read": 7066,
+        "cache_write": 0,
+        "uncached": 121896
+      },
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "billed_usd": 1.2828330000000001,
+      "billed_usd_production": 1.3146300000000002,
+      "by_phase": {
+        "review": 156571
+      },
+      "calls": 1,
+      "context_volume": 156571,
+      "cross_pr_read_tokens": 7066,
+      "files_dropped_over_budget": 2,
+      "files_read": 6,
+      "findings": 3,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "memories_used": 0,
+      "memory_overhead_usd": 0,
+      "output_tokens": 21271,
+      "pr_id": "redis/redis-py#4054",
+      "pr_ordinal": 2,
+      "retrieval_precision": null,
+      "retrieved": 0,
+      "tiers": {
+        "cache_read": 7066,
+        "cache_write": 0,
+        "uncached": 149505
+      },
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "billed_usd": 2.48633,
+      "billed_usd_production": 2.48633,
+      "by_phase": {
+        "prime": 310191
+      },
+      "calls": 4,
+      "context_volume": 310191,
+      "cross_pr_read_tokens": 0,
+      "files_dropped_over_budget": null,
+      "files_read": null,
+      "findings": null,
+      "injected_tokens": 0,
+      "memories_returned": 204,
+      "memories_used": null,
+      "memory_overhead_usd": 2.48633,
+      "output_tokens": 37415,
+      "pr_id": "prime",
+      "pr_ordinal": 0,
+      "retrieval_precision": null,
+      "retrieved": null,
+      "tiers": {
+        "cache_read": 0,
+        "cache_write": 0,
+        "uncached": 310191
+      },
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "billed_usd": 0.1368625,
+      "billed_usd_production": 0.1368625,
+      "by_phase": {
+        "review": 16776
+      },
+      "calls": 1,
+      "context_volume": 16776,
+      "cross_pr_read_tokens": 0,
+      "files_dropped_over_budget": 0,
+      "files_read": 0,
+      "findings": 0,
+      "injected_tokens": 3029,
+      "memories_returned": 40,
+      "memories_used": 3,
+      "memory_overhead_usd": 0,
+      "output_tokens": 1766,
+      "pr_id": "redis/redis-py#4059",
+      "pr_ordinal": 1,
+      "retrieval_precision": 0.15,
+      "retrieved": 20,
+      "tiers": {
+        "cache_read": 0,
+        "cache_write": 7066,
+        "uncached": 9710
+      },
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "billed_usd": 0.6032580000000001,
+      "billed_usd_production": 0.6350550000000001,
+      "by_phase": {
+        "review": 24005,
+        "write": 1241
+      },
+      "calls": 2,
+      "context_volume": 25246,
+      "cross_pr_read_tokens": 7066,
+      "files_dropped_over_budget": 0,
+      "files_read": 0,
+      "findings": 2,
+      "injected_tokens": 3065,
+      "memories_returned": 48,
+      "memories_used": 2,
+      "memory_overhead_usd": 0.04168,
+      "output_tokens": 20353,
+      "pr_id": "redis/redis-py#4054",
+      "pr_ordinal": 2,
+      "retrieval_precision": 0.1,
+      "retrieved": 20,
+      "tiers": {
+        "cache_read": 7066,
+        "cache_write": 0,
+        "uncached": 18180
+      },
+      "truncated_calls": 0
+    }
+  ],
+  "quality_gold": {},
+  "quality_proxy": {
+    "baseline": {
+      "agreement": 0.0,
+      "coverage": 0.0,
+      "note": "Blind PRs (no human inline comments) are excluded from these ratios rather than counted as zero -- the proxy cannot distinguish an unhelpful agent from a silent reviewer.",
+      "prs": 2,
+      "prs_blind": 1,
+      "prs_with_human_comments": 1
+    },
+    "memory": {
+      "agreement": 0.0,
+      "coverage": 0.0,
+      "note": "Blind PRs (no human inline comments) are excluded from these ratios rather than counted as zero -- the proxy cannot distinguish an unhelpful agent from a silent reviewer.",
+      "prs": 2,
+      "prs_blind": 1,
+      "prs_with_human_comments": 1
+    }
+  },
+  "results": [
+    {
+      "ordinal": 1,
+      "outcomes": {
+        "baseline": {
+          "files_dropped_over_budget": 2,
+          "files_read": 4,
+          "findings": [],
+          "injected_tokens": 0,
+          "memories_used": [],
+          "retrieval_precision": null,
+          "retrieved": 0,
+          "truncated": false,
+          "written": []
+        },
+        "memory": {
+          "files_dropped_over_budget": 0,
+          "files_read": 0,
+          "findings": [],
+          "injected_tokens": 3029,
+          "memories_used": [
+            "conv-redis-commands-core-py-lazy-import-of-client-sentinels",
+            "conv-redis-commands-core-py-overload-typing-convention",
+            "conv-redis-commands-core-py-shared-sync-async-implementation"
+          ],
+          "retrieval_precision": 0.15,
+          "retrieved": 20,
+          "truncated": false,
+          "written": []
+        }
+      },
+      "pr_id": "redis/redis-py#4059",
+      "pr_number": 4059
+    },
+    {
+      "ordinal": 2,
+      "outcomes": {
+        "baseline": {
+          "files_dropped_over_budget": 2,
+          "files_read": 6,
+          "findings": [
+            {
+              "category": "api-contract",
+              "confidence": "medium",
+              "file": "redis/_parsers/encoders.py",
+              "line": 16,
+              "message": "`Encoder.encode` now accepts `bytearray` (and the new tests assert `hset`/`hget`/`hmget` work with `bytearray` fields/values), but `redis/typing.py` is not touched by this PR, so `EncodedT`/`EncodableT`/`_StringLikeT` (and hence `FieldT`/`KeyT`) still exclude `bytearray`. In a PR whose stated goal is \"correct hints with all supported arg types\", the newly-supported type is still a type-checker error at every call site (e.g. `r.hset(name, bytearray(b\"f\"), bytearray(b\"v\"))`). Consider adding `bytearray` to `EncodedT`/`_StringLikeT`.",
+              "severity": "minor"
+            },
+            {
+              "category": "performance",
+              "confidence": "medium",
+              "file": "redis/connection.py",
+              "line": 127,
+              "message": "`HiredisRespSerializer.pack` now rebuilds the whole args tuple for every command and materializes `memoryview` arguments via `bytes(arg)`. memoryview arguments exist precisely to avoid copying large payloads (see the special-casing in `PythonRespSerializer.pack`/`pack_commands`), so this forces a full copy of every large value on the hiredis path; only `bytearray` needs the conversion for hiredis. Suggest converting only `bytearray` and skipping the tuple reconstruction when no argument requires conversion.",
+              "severity": "minor"
+            },
+            {
+              "category": "style",
+              "confidence": "medium",
+              "file": "redis/commands/helpers.py",
+              "line": 22,
+              "message": "`list_or_args` was re-typed from `(keys: KeysT, args: Tuple[KeyT, ...]) -> List[KeyT]` to `(keys: Any, args: Iterable[Any] | None) -> List[Any]`, which erases type information for every caller (`mget`, `sdiff`, `blpop`, `hmget`, ...). Since the motivation is that hash fields are `FieldT` rather than `KeyT`, a union (e.g. `Union[KeysT, FieldT, Iterable[...]]`) or a TypeVar would preserve checking instead of falling back to `Any` in a type-hint-focused change.",
+              "severity": "nit"
+            }
+          ],
+          "injected_tokens": 0,
+          "memories_used": [],
+          "retrieval_precision": null,
+          "retrieved": 0,
+          "truncated": false,
+          "written": []
+        },
+        "memory": {
+          "files_dropped_over_budget": 0,
+          "files_read": 0,
+          "findings": [
+            {
+              "category": "correctness",
+              "confidence": "medium",
+              "file": "redis/commands/core.py",
+              "line": 9225,
+              "message": "hmget's `keys` parameter is widened to `FieldT | Iterable[FieldT]` (FieldT includes bytearray/memoryview), but the implementation still delegates to `list_or_args`, which only treats `bytes` and `str` as scalars. A `bytearray` or `memoryview` passes `iter(keys)` and is *not* caught by `isinstance(keys, (bytes, str))`, so it is left as-is and then splatted into `execute_command(\"HMGET\", name, *args)` as individual integer bytes \u2014 the command is sent with one field per byte. The new tests assert the opposite behaviour (tests/test_commands.py:4689 and :4691, and the async twin), so they should fail for the bytearray/memoryview cases. Either extend the bytes-like check in `redis/commands/helpers.py::list_or_args` (e.g. `(bytes, bytearray, memoryview, str)`) or narrow the annotation.",
+              "severity": "major"
+            },
+            {
+              "category": "performance",
+              "confidence": "low",
+              "file": "redis/connection.py",
+              "line": 127,
+              "message": "HiredisRespSerializer.pack now materialises every `memoryview` argument via `bytes(arg)`, which copies the whole buffer and defeats the zero-copy path that memoryview arguments exist for (PythonRespSerializer deliberately appends the memoryview without copying). Only `bytearray` needs the conversion if hiredis already accepts buffers; additionally the generator rebuilds the args tuple on every single command pack, even when no bytes-like argument is present \u2014 consider converting lazily (e.g. only when `any(isinstance(a, (bytearray, memoryview)) for a in args)`).",
+              "severity": "minor"
+            }
+          ],
+          "injected_tokens": 3065,
+          "memories_used": [
+            "conv-redis-commands-core-py-overload-typing-convention",
+            "conv-redis-connection-py-module-responsibility-boundary"
+          ],
+          "retrieval_precision": 0.1,
+          "retrieved": 20,
+          "truncated": false,
+          "written": [
+            "find-redis-commands-list-or-args-scalar-detection-v-b9a654b647c8",
+            "find-redis-commands-type-annotations-must-match-run-16588c107606",
+            "find-redis-connection-py-resp-serializer-zero-copy-f4d6e0481678",
+            "find-redis-connection-py-pack-is-a-per-command-hot-path-2"
+          ]
+        }
+      },
+      "pr_id": "redis/redis-py#4054",
+      "pr_number": 4054
+    }
+  ],
+  "rows": [
+    {
+      "beats": [],
+      "diff_size": 319,
+      "gold_labeled": false,
+      "human_comments": 0,
+      "modules": [
+        "redis/commands/core.py"
+      ],
+      "n_files": 6,
+      "ordinal": 1,
+      "pr_id": "redis/redis-py#4059",
+      "pr_number": 4059,
+      "py_files": 6,
+      "recurring_modules": [
+        "redis/_parsers/helpers.py",
+        "redis/_parsers/response_callbacks.py",
+        "redis/commands/core.py",
+        "tests/test_asyncio/test_commands.py",
+        "tests/test_commands.py"
+      ],
+      "recurs_from": [
+        1,
+        2,
+        3,
+        7
+      ],
+      "title": "Removing the GCRA/rate limitter/ command support."
+    },
+    {
+      "beats": [],
+      "diff_size": 331,
+      "gold_labeled": false,
+      "human_comments": 3,
+      "modules": [
+        "redis/commands/core.py",
+        "redis/connection.py"
+      ],
+      "n_files": 8,
+      "ordinal": 2,
+      "pr_id": "redis/redis-py#4054",
+      "pr_number": 4054,
+      "py_files": 7,
+      "recurring_modules": [
+        "dev_requirements.txt",
+        "redis/commands/core.py",
+        "redis/commands/helpers.py",
+        "redis/commands/json/commands.py",
+        "redis/connection.py",
+        "tests/test_asyncio/test_commands.py",
+        "tests/test_commands.py"
+      ],
+      "recurs_from": [
+        1,
+        2,
+        3,
+        5,
+        6,
+        7,
+        8
+      ],
+      "title": "Updating hash commands type hints and jsonget return type hints"
+    }
+  ],
+  "run_id": "smoke-2",
+  "warnings": [
+    "baseline read 14,132 cache tokens on a shared prefix it did not write; the production-equivalent series prices this out",
+    "4 touched file(s) exceeded the per-review source budget and were not read; the budget lowers the baseline's cost, so the measured gap stays conservative",
+    "no gold labels were loaded -- quality is proxy-only, which spec 7c rules out as a sole standard"
+  ]
+}

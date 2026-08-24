@@ -82,7 +82,15 @@ class ModelConfig:
 
     model: str = "claude-opus-5"
     effort: Effort = "xhigh"
-    max_tokens: int = 32000
+    # 32000 was not enough: at xhigh, the review of the largest PR in the frozen
+    # sequence (48 files, +/-12217) spent the whole budget on thinking plus
+    # findings and stopped at `max_tokens`, mid-finding. A truncated review is a
+    # quality measurement of the ceiling rather than of the agent, and it hits
+    # the biggest PRs -- exactly the ones the comparison rests on. Headroom is
+    # nearly free here: output is billed per token generated, not per token
+    # allowed, and the ceiling does not itself make the model verbose (effort
+    # does). Verified accepted on this model, as is 128000.
+    max_tokens: int = 96000
     thinking: dict[str, Any] | None = field(
         default_factory=lambda: {"type": "adaptive", "display": "summarized"}
     )

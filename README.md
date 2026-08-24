@@ -19,20 +19,21 @@ That document is the source of truth; this README is the map.
 
 ## Status
 
-**No run has been executed yet.** Everything around the run is built and
-verified against live services.
+**The first full run is in flight; no completed run exists yet.** Everything
+around it is built and verified against live services.
 
 | Piece | State |
 |---|---|
-| Harness: accounting, ledger, Messages API client, review loop | built, 154 tests |
-| Baseline agent, memory agent, one-time repo primer | built |
-| Redis Agent Memory client | built; store **provisioned and verified** (`memcheck` green, 0.33s write→searchable) |
+| Harness: accounting, ledger, Messages API client, review loop | built, 169 tests |
+| Baseline agent, memory agent, one-time repo primer | built; both verified end to end against the live APIs |
+| Redis Agent Memory client | built; store **provisioned and verified** (`memcheck` green, ~0.4s write→searchable) |
 | Frozen dataset | 19 PRs curated, ingested, cached; 7 hand-labelled; all 3 narrative beats assigned |
 | Quality scoring: proxy + gold, false-positive traps | built |
-| Replay page | built; renders a synthetic fixture until a real run exists |
-| **The runs themselves** | **blocked on `ANTHROPIC_API_KEY`** |
+| Replay page | built; renders a synthetic fixture until a real `report.json` is dropped into `web/public/` |
+| **The full sequence run** | **in progress** (`runs/run-1`) — single-process-locked, checkpointed, resumable |
 | Gold labels | **candidate only — need a human pass** (see below) |
 | `review_policy` (procedural memory) | not built; the spec sequences it last |
+| Memory invalidation for the convention-change beat | not built; spec §6 says disclose the gap rather than drop the PR |
 
 Two caveats, stated here rather than in a footnote:
 
@@ -41,10 +42,20 @@ Two caveats, stated here rather than in a footnote:
   independent standard, however well grounded in maintainer quotes. They are
   marked `CANDIDATE` and a test asserts they stay marked. See
   [docs/sequence-beats.md](docs/sequence-beats.md).
+- **The gold set is small enough that quality is a guardrail, not a
+  measurement**: 6 labelled defects and 3 false-positive traps across 7 PRs, and
+  4 of those 7 have no labelled defect at all, so **recall is computed over 3
+  PRs**. One finding moves recall by ~17 points. Read it as "did review quality
+  collapse?" — which is what spec §7 asks of it — and not as a precision/recall
+  figure worth quoting to two significant figures. Precision and the
+  false-positive rate are on firmer ground, since every agent finding counts
+  toward them.
 - **The replay page currently shows synthetic numbers.** The PRs, diffs, modules,
   comment counts and beats in the fixture are real; every token count, dollar
   figure and quality score is a placeholder. The page says so in a permanent
-  banner and reports its run id as `SYNTHETIC-no-run-executed`.
+  banner and reports its run id as `SYNTHETIC-no-run-executed`. Its smoke test
+  also renders a real harness report, so the two shapes cannot drift apart
+  unnoticed — that failure mode already happened once.
 
 ---
 
@@ -60,7 +71,7 @@ file, so a one-off `ANTHROPIC_API_KEY=... python3 -m reviewbot run ...` works.
 cp .env.example .env
 python3 -m reviewbot doctor  # says exactly what is still missing (and flags placeholders)
 
-python3 -m unittest discover -s tests -t .   # 154 tests, no network, no keys
+python3 -m unittest discover -s tests -t .   # 169 tests, no network, no keys
 ```
 
 Then, in dependency order:
@@ -68,13 +79,25 @@ Then, in dependency order:
 ```bash
 python3 -m reviewbot memcheck                  # is the memory store usable?
 python3 -m reviewbot dataset validate          # is the frozen sequence complete?
-python3 -m reviewbot run my-run-1 --checkout ../redis-py
+git clone https://github.com/redis/redis-py .checkouts/redis-py
+python3 -m reviewbot run my-run-1 --checkout .checkouts/redis-py
 python3 -m reviewbot report runs/my-run-1      # headline numbers + summary.json
+cp runs/my-run-1/report.json web/public/            # the page now renders the real run
+python3 tools/make_page_fixture.py runs/my-run-1   # and its smoke test checks that shape
 ```
 
 `run --checkout` reads source from a local `redis-py` clone via
 `git show <sha>:<path>`, so only PR *metadata* needs a GitHub token, not file
 contents.
+
+**A run takes hours and spends real money, so three things guard it.** Only one
+process may execute a run — `runs/<id>/run.lock` refuses a second, because two
+processes cannot share a prompt cache entry and their misses would be recorded as
+context volume. Each PR is checkpointed as it finishes and a completed primer is
+never re-paid, so re-running the same command resumes rather than restarting.
+And a `max_tokens` stop raises a named error instead of a JSON parse failure: a
+truncated review is unparseable, not a review with fewer findings, and reporting
+it as empty would credit an agent with zero findings it never made.
 
 ### Commands
 
@@ -185,8 +208,21 @@ something else:
 - **Retrieval must use `filterOp: all`.** With `any`, the namespace clause is
   OR-ed with the module clause and memories from other runs come back —
   cross-run contamination that looks like working retrieval.
+- **Module retrieval filters on `topics`, not `attributes`.** An attribute
+  clause is a typed union with no membership operator, and its `list` variant is
+  whole-value equality — so the natural-looking
+  `attributes.module: {list: [a, b]}` returns `200` with zero results,
+  indistinguishable from an empty store. `topics` takes `in` and holds raw file
+  paths verbatim. Search responses also omit `attributes` altogether; only
+  `GET` returns them.
 - **Requests need an explicit `User-Agent`**; Cloudflare 403s urllib's default
   with `error_code 1010`, which reads like an auth failure.
+- **Prompt caching does not survive even a back-to-back replay.** An `xhigh`
+  review of a 200k-token prompt takes 6–8 minutes, so two consecutive calls on
+  one PR are 6.2 minutes apart against the 5-minute TTL. Both agents write the
+  shared prefix and neither reads it. Inconvenient as a cost saving, useful as
+  evidence: caching could not bridge two reviews of the *same* PR, let alone a
+  real PR cadence.
 - **redis-ui has no chart components and no `Table`** — 56 components, `Gauge` is
   the only visualization-adjacent one. It supplies the shell; the charts and the
   accounting table are hand-built against its theme tokens.
