@@ -1,22 +1,38 @@
 # Does agentic memory make PR review cheaper?
 
-A **demo and experiment**, not a product. Two PR-review agents review the same
-frozen sequence of 19 real `redis/redis-py` pull requests under an identical
-model, prompt, tool set and effort level. The only difference between them is a
-memory layer.
+Two AI code reviewers read the same 19 real pull requests from `redis/redis-py`.
+Same model, same prompt, same everything — except one of them **remembers** what
+it has learned about the codebase, and the other starts from scratch every time.
 
-**The claim:** rebuilding an understanding of the repo is the largest recurring
-line item in a review agent's token bill, and memory converts it from a *per-PR*
-cost into a *per-repo* cost. Prompt caching cannot do that — its longest TTL is
-one hour, and no real PR cadence fits inside that.
+**The idea:** most of a review agent's bill is spent re-learning the codebase
+before it even looks at the change. Memory makes that a one-time cost per
+*repository* instead of a cost per *pull request*.
 
-**The deliverable** is that claim measured, with the instrumentation exposed
-rather than hidden behind a hero chart: two token series, a break-even PR number,
-and a quality guardrail reported even when unflattering.
+### How it works, in four steps
+
+1. **Learn the repo once.** Before any reviewing, the memory agent reads the
+   codebase and writes ~100 short notes — conventions, architecture, gotchas —
+   into Redis Agent Memory. This costs real money, once: about $2.
+2. **Per pull request, look up instead of re-reading.** It fetches only the notes
+   about the files this PR touches. The other agent re-reads the full source of
+   those files, every single time. That is the only difference between them.
+3. **Write down what it found.** After reviewing, it saves its findings, so the
+   next PR touching the same file starts with them already in hand.
+4. **Count every token, memory included.** Every API call is logged and tagged,
+   so the saving is always reported *net* of what running memory costs.
+
+**The result:** a review costs **28–32% less**, the one-time learning pays for
+itself after **5 pull requests**, and review quality held up. Prompt caching
+cannot do this job — its longest lifetime is one hour, and real pull requests
+arrive days apart.
+
+This repo is the experiment itself, not a product: the raw ledgers, the numbers
+net of overhead, and a page that replays them — including the parts that came out
+unflattering.
 
 ---
 
-## How it works
+## The same thing, in detail
 
 ```
         frozen sequence: 19 real redis-py PRs, pinned at 7021617890d4
