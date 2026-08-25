@@ -79,6 +79,19 @@ and the widening gap after it is the per-review saving compounding. Read the
 function of how many PRs are in the sequence, and the sequence-independent number
 is the per-review one below.*
 
+**To see this live** — every chart, both runs, the per-PR accounting table and the
+quality panel:
+
+```bash
+cd web
+npm install        # first time only; set npm_config_cache if ~/.npm is unwritable
+npm run dev        # http://localhost:5173
+```
+
+The page reads `web/public/runs.json` and the per-run reports beside it, which are
+committed — so it renders the real runs with no API key, no credentials and no
+network. Use the run switcher to compare run-1 against run-2.
+
 **Two complete runs**, 19 PRs each, both agents, the same config fingerprint
 (`bd49dcd2fae0fe0d`). They differ in exactly one thing — how memory is
 retrieved — and the replay page renders both against the no-memory baseline.
@@ -273,8 +286,11 @@ Both of these are results, not defects to hide:
   against `...helpers-py-python-version-compa...` in PR 9). Modules repeat
   heavily — 15 of 29 recur, `commands/core.py` nine times — so the recurrence is
   there and the *key* is what fails. This is the same mistake as the original
-  unroutable-module bug: free text from a model is not a stable key. A working
-  version needs a similarity search before writing, or a coarser stable key.
+  unroutable-module bug: free text from a model is not a stable key. The fix is a
+  semantic search over `review_finding` scoped to the module *before* writing,
+  merging into any hit above a threshold — one extra round trip and zero model
+  tokens, because searches are `billable=False`. A coarser key made of more model
+  text will not do it: `finding_class` is free text too.
   The loop duly survived: in run-2 the memory agent restated the same false
   claim **9 times across 7 PRs** against the baseline's 2, versus 11 across 9 in
   run-1. Suppressing a refuted claim is separately `review_policy`'s job, and
