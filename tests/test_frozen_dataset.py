@@ -18,14 +18,30 @@ SEQUENCE = ROOT / "data" / "sequence.json"
 GOLD = ROOT / "data" / "gold"
 
 
+# data/prs is gitignored -- it is reproducible from the pinned SHAs, and 3.9 MB
+# of PR JSON does not belong in git. But two tests below read it, and on a fresh
+# clone they failed with a diff of 19 "not ingested" strings, which reads like a
+# broken repo rather than a missing step. Skip with the fix instead.
+PRS = ROOT / "data" / "prs"
+NEEDS_INGEST = (
+    f"{PRS} is empty -- run `python3 -m reviewbot ingest` (needs GITHUB_TOKEN). "
+    "It defaults to the frozen sequence and fetches exactly its 19 PRs."
+)
+
+
+def ingested() -> bool:
+    return PRS.exists() and any(PRS.glob("*/*.json"))
+
+
 @unittest.skipUnless(SEQUENCE.exists(), "no frozen sequence in this checkout")
 class TestFrozenSequence(unittest.TestCase):
     def setUp(self):
         self.sequence = Sequence.load(SEQUENCE)
         self.gold = load_gold_dir(GOLD)
 
+    @unittest.skipUnless(ingested(), NEEDS_INGEST)
     def test_the_sequence_validates(self):
-        self.assertEqual(validate(self.sequence, PRStore(ROOT / "data" / "prs")), [])
+        self.assertEqual(validate(self.sequence, PRStore(PRS)), [])
 
     def test_every_gold_flagged_pr_has_a_label_file(self):
         flagged = {e.pr_number for e in self.sequence.gold_subset}
@@ -56,6 +72,7 @@ class TestFrozenSequence(unittest.TestCase):
                 f"{MUST_NOT_FLAG} label",
             )
 
+    @unittest.skipUnless(ingested(), NEEDS_INGEST)
     def test_trap_labels_recur_so_a_memoryless_reviewer_can_re_flag_them(self):
         trap_files = {
             item.file

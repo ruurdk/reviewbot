@@ -2,6 +2,8 @@
 
 import unittest
 
+from dataclasses import replace
+
 from reviewbot.accounting import MEMORY_OP, MODEL_CALL, CallRecord, Usage
 from reviewbot.analysis import (
     breakeven_ordinal,
@@ -182,7 +184,7 @@ class TestCacheIntegrity(unittest.TestCase):
         ]
         problems = cache_integrity(records)
         self.assertEqual(len(problems), 2)
-        self.assertIn("not byte-stable", problems[0])
+        self.assertIn("varying between calls", problems[0])
         self.assertIn("read none", problems[1])
 
     def test_healthy_caching_reports_nothing(self):
@@ -235,3 +237,37 @@ class TestMemoriesReturnedCountsSearchesOnly(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class TestCacheExpiryIsNotAPrefixBug(unittest.TestCase):
+    """A repeated prefix with no read means two different things.
+
+    The prefix id is a hash of the prefix bytes, so an identical id across two
+    calls already proves byte-stability. Only the elapsed time can tell an
+    expired entry from a genuinely varying prefix -- and reporting expiry as
+    instability sends a reader hunting a nondeterminism bug that is not there.
+    Every such warning in run-1 was expiry: 13 to 23 minutes apart on a 5-minute
+    TTL, because an xhigh review streams for 6-8 minutes.
+    """
+
+    def _two_calls(self, gap_seconds):
+        a = rec("baseline", 1, inp=100, write=50, prefix="P")
+        b = rec("baseline", 2, inp=100, read=0, prefix="P")
+        return [replace(a, ts=1000.0), replace(b, ts=1000.0 + gap_seconds)]
+
+    def test_a_gap_beyond_the_ttl_is_reported_as_expiry(self):
+        problems = cache_integrity(self._two_calls(900))  # 15 min on a 5 min TTL
+        joined = " ".join(problems)
+        self.assertIn("had expired", joined)
+        self.assertIn("not a prefix bug", joined)
+        self.assertNotIn("varying between calls", joined)
+
+    def test_a_gap_inside_the_ttl_is_still_reported_as_a_defect(self):
+        problems = cache_integrity(self._two_calls(30))
+        joined = " ".join(problems)
+        self.assertIn("varying between calls", joined)
+        self.assertNotIn("had expired", joined)
+
+    def test_the_ttl_used_is_the_one_the_call_asked_for(self):
+        """A 15-minute gap is expiry at 5m and a real defect at 1h."""
+        calls = [replace(r, cache_ttl="1h") for r in self._two_calls(900)]
+        self.assertIn("varying between calls", " ".join(cache_integrity(calls)))

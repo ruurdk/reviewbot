@@ -1,0 +1,969 @@
+{
+  "agents": {
+    "baseline": {
+      "context_volume": 3890269,
+      "billed_usd": 32.6703265,
+      "billed_usd_production": 32.9247025,
+      "output_tokens": 535048,
+      "calls": 19,
+      "memory_overhead_usd": 0,
+      "truncated_calls": 0,
+      "cross_pr_read_tokens": 56528
+    },
+    "memory": {
+      "context_volume": 1890035,
+      "billed_usd": 25.757247500000002,
+      "billed_usd_production": 26.0752175,
+      "output_tokens": 661822,
+      "calls": 41,
+      "memory_overhead_usd": 3.1534650000000006,
+      "truncated_calls": 0,
+      "cross_pr_read_tokens": 70660
+    }
+  },
+  "breakeven": {
+    "as_measured": 5,
+    "production_equivalent": 5
+  },
+  "primer": {
+    "primer_calls": 4,
+    "primer_context_volume": 310191,
+    "primer_usd": 2.1457050000000004,
+    "prs": 19,
+    "primer_usd_per_pr": 0.11293184210526318
+  },
+  "cache_integrity": [
+    "baseline: 10 repeat(s) of a byte-stable prefix missed the cache because the entry had expired -- the calls are further apart than the TTL. Expected at this review latency; it is why caching is inert here (spec 7e), not a prefix bug.",
+    "memory: 8 repeat(s) of a byte-stable prefix missed the cache because the entry had expired -- the calls are further apart than the TTL. Expected at this review latency; it is why caching is inert here (spec 7e), not a prefix bug."
+  ],
+  "abandoned": {
+    "calls": 0,
+    "billed_usd": 0,
+    "context_volume": 0,
+    "seqs": []
+  },
+  "shared_prefix_freeriding": {},
+  "phases": [
+    "prime",
+    "retrieve",
+    "review",
+    "write"
+  ],
+  "per_pr": [
+    {
+      "agent": "baseline",
+      "pr_ordinal": 1,
+      "pr_id": "redis/redis-py#4025",
+      "context_volume": 383705,
+      "billed_usd": 2.9312075,
+      "billed_usd_production": 2.9312075,
+      "output_tokens": 40154,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 383705
+      },
+      "tiers": {
+        "uncached": 376639,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 2,
+      "pr_id": "redis/redis-py#4031",
+      "context_volume": 162692,
+      "billed_usd": 1.2727130000000002,
+      "billed_usd_production": 1.30451,
+      "output_tokens": 19642,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 162692
+      },
+      "tiers": {
+        "uncached": 155626,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 3,
+      "pr_id": "redis/redis-py#4030",
+      "context_volume": 107285,
+      "billed_usd": 0.7814780000000001,
+      "billed_usd_production": 0.8132750000000001,
+      "output_tokens": 11074,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 107285
+      },
+      "tiers": {
+        "uncached": 100219,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 4,
+      "pr_id": "redis/redis-py#4037",
+      "context_volume": 153033,
+      "billed_usd": 1.211693,
+      "billed_usd_production": 1.24349,
+      "output_tokens": 19133,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 153033
+      },
+      "tiers": {
+        "uncached": 145967,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 5,
+      "pr_id": "redis/redis-py#4038",
+      "context_volume": 123744,
+      "billed_usd": 0.9555480000000001,
+      "billed_usd_production": 0.9873450000000001,
+      "output_tokens": 14745,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 123744
+      },
+      "tiers": {
+        "uncached": 116678,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 6,
+      "pr_id": "redis/redis-py#4044",
+      "context_volume": 193076,
+      "billed_usd": 1.8085125,
+      "billed_usd_production": 1.8085125,
+      "output_tokens": 33372,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 193076
+      },
+      "tiers": {
+        "uncached": 186010,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 7,
+      "pr_id": "redis/redis-py#4052",
+      "context_volume": 503525,
+      "billed_usd": 3.5690325000000005,
+      "billed_usd_production": 3.5690325000000005,
+      "output_tokens": 41703,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 503525
+      },
+      "tiers": {
+        "uncached": 496459,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 8,
+      "pr_id": "redis/redis-py#4059",
+      "context_volume": 128962,
+      "billed_usd": 0.679438,
+      "billed_usd_production": 0.711235,
+      "output_tokens": 2657,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 128962
+      },
+      "tiers": {
+        "uncached": 121896,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 9,
+      "pr_id": "redis/redis-py#4054",
+      "context_volume": 156571,
+      "billed_usd": 1.086858,
+      "billed_usd_production": 1.1186550000000002,
+      "output_tokens": 13432,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 156571
+      },
+      "tiers": {
+        "uncached": 149505,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 10,
+      "pr_id": "redis/redis-py#4067",
+      "context_volume": 171374,
+      "billed_usd": 1.4336525,
+      "billed_usd_production": 1.4336525,
+      "output_tokens": 22718,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 171374
+      },
+      "tiers": {
+        "uncached": 164308,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 11,
+      "pr_id": "redis/redis-py#4055",
+      "context_volume": 164113,
+      "billed_usd": 1.076443,
+      "billed_usd_production": 1.10824,
+      "output_tokens": 11507,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 164113
+      },
+      "tiers": {
+        "uncached": 157047,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 12,
+      "pr_id": "redis/redis-py#4068",
+      "context_volume": 166930,
+      "billed_usd": 1.5955780000000002,
+      "billed_usd_production": 1.627375,
+      "output_tokens": 31709,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 166930
+      },
+      "tiers": {
+        "uncached": 159864,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 13,
+      "pr_id": "redis/redis-py#4063",
+      "context_volume": 160565,
+      "billed_usd": 1.5629325,
+      "billed_usd_production": 1.5629325,
+      "output_tokens": 30051,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 160565
+      },
+      "tiers": {
+        "uncached": 153499,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 14,
+      "pr_id": "redis/redis-py#4082",
+      "context_volume": 185254,
+      "billed_usd": 1.5492775,
+      "billed_usd_production": 1.5492775,
+      "output_tokens": 24567,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 185254
+      },
+      "tiers": {
+        "uncached": 178188,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 15,
+      "pr_id": "redis/redis-py#4114",
+      "context_volume": 208702,
+      "billed_usd": 1.8961925000000002,
+      "billed_usd_production": 1.8961925000000002,
+      "output_tokens": 33754,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 208702
+      },
+      "tiers": {
+        "uncached": 201636,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 16,
+      "pr_id": "redis/redis-py#4131",
+      "context_volume": 52539,
+      "billed_usd": 0.9106275,
+      "billed_usd_production": 0.9106275,
+      "output_tokens": 25564,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 52539
+      },
+      "tiers": {
+        "uncached": 45473,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 17,
+      "pr_id": "redis/redis-py#4177",
+      "context_volume": 335171,
+      "billed_usd": 2.9657875000000002,
+      "billed_usd_production": 2.9657875000000002,
+      "output_tokens": 51244,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 335171
+      },
+      "tiers": {
+        "uncached": 328105,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 18,
+      "pr_id": "redis/redis-py#4205",
+      "context_volume": 241688,
+      "billed_usd": 2.4652225000000003,
+      "billed_usd_production": 2.4652225000000003,
+      "output_tokens": 49918,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 241688
+      },
+      "tiers": {
+        "uncached": 234622,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 19,
+      "pr_id": "redis/redis-py#4272",
+      "context_volume": 291340,
+      "billed_usd": 2.9181325000000005,
+      "billed_usd_production": 2.9181325000000005,
+      "output_tokens": 58104,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 291340
+      },
+      "tiers": {
+        "uncached": 284274,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 0,
+      "pr_id": "prime",
+      "context_volume": 310191,
+      "billed_usd": 2.1457050000000004,
+      "billed_usd_production": 2.1457050000000004,
+      "output_tokens": 23790,
+      "calls": 4,
+      "memory_overhead_usd": 2.1457050000000004,
+      "by_phase": {
+        "prime": 310191
+      },
+      "tiers": {
+        "uncached": 310191,
+        "cache_write": 0,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 1,
+      "pr_id": "redis/redis-py#4025",
+      "context_volume": 237831,
+      "billed_usd": 2.3413875,
+      "billed_usd_production": 2.3413875,
+      "output_tokens": 45736,
+      "calls": 2,
+      "memory_overhead_usd": 0.085365,
+      "by_phase": {
+        "review": 234843,
+        "write": 2988
+      },
+      "tiers": {
+        "uncached": 230765,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 3111,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 2,
+      "pr_id": "redis/redis-py#4031",
+      "context_volume": 29065,
+      "billed_usd": 0.8132325000000001,
+      "billed_usd_production": 0.8132325000000001,
+      "output_tokens": 26363,
+      "calls": 2,
+      "memory_overhead_usd": 0.04957500000000001,
+      "by_phase": {
+        "review": 27220,
+        "write": 1845
+      },
+      "tiers": {
+        "uncached": 21999,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 3172,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 3,
+      "pr_id": "redis/redis-py#4030",
+      "context_volume": 21468,
+      "billed_usd": 0.389618,
+      "billed_usd_production": 0.421415,
+      "output_tokens": 12563,
+      "calls": 2,
+      "memory_overhead_usd": 0.04055,
+      "by_phase": {
+        "review": 19843,
+        "write": 1625
+      },
+      "tiers": {
+        "uncached": 14402,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 3068,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 4,
+      "pr_id": "redis/redis-py#4037",
+      "context_volume": 22843,
+      "billed_usd": 0.6407680000000001,
+      "billed_usd_production": 0.6725650000000001,
+      "output_tokens": 22334,
+      "calls": 2,
+      "memory_overhead_usd": 0.040675,
+      "by_phase": {
+        "review": 21058,
+        "write": 1785
+      },
+      "tiers": {
+        "uncached": 15777,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 3301,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 5,
+      "pr_id": "redis/redis-py#4038",
+      "context_volume": 24517,
+      "billed_usd": 0.562338,
+      "billed_usd_production": 0.5941350000000001,
+      "output_tokens": 18862,
+      "calls": 2,
+      "memory_overhead_usd": 0.03998,
+      "by_phase": {
+        "review": 22846,
+        "write": 1671
+      },
+      "tiers": {
+        "uncached": 17451,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 3507,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 6,
+      "pr_id": "redis/redis-py#4044",
+      "context_volume": 66642,
+      "billed_usd": 1.391613,
+      "billed_usd_production": 1.42341,
+      "output_tokens": 43608,
+      "calls": 2,
+      "memory_overhead_usd": 0.054475,
+      "by_phase": {
+        "review": 64127,
+        "write": 2515
+      },
+      "tiers": {
+        "uncached": 59576,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 3713,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 7,
+      "pr_id": "redis/redis-py#4052",
+      "context_volume": 350406,
+      "billed_usd": 2.9333625000000003,
+      "billed_usd_production": 2.9333625000000003,
+      "output_tokens": 46900,
+      "calls": 2,
+      "memory_overhead_usd": 0.08977000000000002,
+      "by_phase": {
+        "review": 347132,
+        "write": 3274
+      },
+      "tiers": {
+        "uncached": 343340,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 4007,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 8,
+      "pr_id": "redis/redis-py#4059",
+      "context_volume": 17103,
+      "billed_usd": 0.13782250000000001,
+      "billed_usd_production": 0.13782250000000001,
+      "output_tokens": 1739,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 17103
+      },
+      "tiers": {
+        "uncached": 10037,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 3356,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 9,
+      "pr_id": "redis/redis-py#4054",
+      "context_volume": 26204,
+      "billed_usd": 0.659073,
+      "billed_usd_production": 0.6908700000000001,
+      "output_tokens": 22394,
+      "calls": 2,
+      "memory_overhead_usd": 0.062335,
+      "by_phase": {
+        "review": 24357,
+        "write": 1847
+      },
+      "tiers": {
+        "uncached": 19138,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 3417,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 10,
+      "pr_id": "redis/redis-py#4067",
+      "context_volume": 23827,
+      "billed_usd": 0.802913,
+      "billed_usd_production": 0.8347100000000001,
+      "output_tokens": 28623,
+      "calls": 2,
+      "memory_overhead_usd": 0.03223,
+      "by_phase": {
+        "review": 22496,
+        "write": 1331
+      },
+      "tiers": {
+        "uncached": 16761,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 3471,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 11,
+      "pr_id": "redis/redis-py#4055",
+      "context_volume": 46129,
+      "billed_usd": 0.5912980000000001,
+      "billed_usd_production": 0.623095,
+      "output_tokens": 15698,
+      "calls": 2,
+      "memory_overhead_usd": 0.043190000000000006,
+      "by_phase": {
+        "review": 44191,
+        "write": 1938
+      },
+      "tiers": {
+        "uncached": 39063,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 3293,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 12,
+      "pr_id": "redis/redis-py#4068",
+      "context_volume": 33369,
+      "billed_usd": 0.785598,
+      "billed_usd_production": 0.817395,
+      "output_tokens": 26022,
+      "calls": 2,
+      "memory_overhead_usd": 0.06578500000000001,
+      "by_phase": {
+        "review": 30907,
+        "write": 2462
+      },
+      "tiers": {
+        "uncached": 26303,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 4189,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 13,
+      "pr_id": "redis/redis-py#4063",
+      "context_volume": 25475,
+      "billed_usd": 1.0255075,
+      "billed_usd_production": 1.0255075,
+      "output_tokens": 35572,
+      "calls": 2,
+      "memory_overhead_usd": 0.055830000000000005,
+      "by_phase": {
+        "review": 23744,
+        "write": 1731
+      },
+      "tiers": {
+        "uncached": 18409,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 3213,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 14,
+      "pr_id": "redis/redis-py#4082",
+      "context_volume": 57205,
+      "billed_usd": 1.0295575000000001,
+      "billed_usd_production": 1.0295575000000001,
+      "output_tokens": 29388,
+      "calls": 2,
+      "memory_overhead_usd": 0.05587,
+      "by_phase": {
+        "review": 54971,
+        "write": 2234
+      },
+      "tiers": {
+        "uncached": 50139,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 3783,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 15,
+      "pr_id": "redis/redis-py#4114",
+      "context_volume": 80134,
+      "billed_usd": 1.5679730000000003,
+      "billed_usd_production": 1.5997700000000004,
+      "output_tokens": 47964,
+      "calls": 2,
+      "memory_overhead_usd": 0.056105,
+      "by_phase": {
+        "review": 77873,
+        "write": 2261
+      },
+      "tiers": {
+        "uncached": 73068,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 3668,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 16,
+      "pr_id": "redis/redis-py#4131",
+      "context_volume": 58393,
+      "billed_usd": 1.3366225,
+      "billed_usd_production": 1.3366225,
+      "output_tokens": 41433,
+      "calls": 2,
+      "memory_overhead_usd": 0.06024,
+      "by_phase": {
+        "review": 56285,
+        "write": 2108
+      },
+      "tiers": {
+        "uncached": 51327,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 3752,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 17,
+      "pr_id": "redis/redis-py#4177",
+      "context_volume": 200137,
+      "billed_usd": 2.5306379999999997,
+      "billed_usd_production": 2.562435,
+      "output_tokens": 62470,
+      "calls": 2,
+      "memory_overhead_usd": 0.063395,
+      "by_phase": {
+        "review": 197863,
+        "write": 2274
+      },
+      "tiers": {
+        "uncached": 193071,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 3620,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 18,
+      "pr_id": "redis/redis-py#4205",
+      "context_volume": 113703,
+      "billed_usd": 1.7913475,
+      "billed_usd_production": 1.7913475,
+      "output_tokens": 48560,
+      "calls": 2,
+      "memory_overhead_usd": 0.08626,
+      "by_phase": {
+        "review": 111016,
+        "write": 2687
+      },
+      "tiers": {
+        "uncached": 106637,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 7128,
+      "memories_returned": 40,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 19,
+      "pr_id": "redis/redis-py#4272",
+      "context_volume": 145393,
+      "billed_usd": 2.2808725,
+      "billed_usd_production": 2.2808725,
+      "output_tokens": 61803,
+      "calls": 2,
+      "memory_overhead_usd": 0.02613,
+      "by_phase": {
+        "review": 143872,
+        "write": 1521
+      },
+      "tiers": {
+        "uncached": 138327,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 3628,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    }
+  ]
+}

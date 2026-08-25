@@ -121,11 +121,16 @@ const REAL_CHECKS = real
   ? [
       ["real report: renders", () => real.text.length > 400],
       ["real report: synthetic banner is gone", () => !/synthetic data/i.test(real.text)],
-      ["real report: run id shown", () => /smoke-2/.test(real.text)],
+      // Read the id from the fixture: hardcoding it broke the moment the
+      // fixture was regenerated from a different run.
+      ["real report: run id shown", () =>
+        real.text.includes(JSON.parse(readFileSync(REAL_FIXTURE, "utf8")).run_id)],
       ["real report: cumulative chart drawn from per_pr", () =>
         real.doc.querySelectorAll("svg path").length > 1],
-      ["real report: accounting table joins PR numbers, not blanks", () =>
-        /4059/.test(real.allText) && /4054/.test(real.allText)],
+      ["real report: accounting table joins PR numbers, not blanks", () => {
+        const rows = JSON.parse(readFileSync(REAL_FIXTURE, "utf8")).rows ?? [];
+        return rows.length > 0 && rows.every((r) => real.allText.includes(String(r.pr_number)));
+      }],
       ["real report: accounting table has a row per measured PR", () =>
         Object.values(real.perAct).some((a) => a.rows >= 3)],
       ["real report: per-PR bars drawn", () =>

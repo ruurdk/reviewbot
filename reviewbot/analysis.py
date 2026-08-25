@@ -271,16 +271,34 @@ def primer_amortization(
     }
 
 
+# Cache TTLs in seconds, for telling an expired entry from an unstable prefix.
+CACHE_TTL_SECONDS = {"5m": 300, "1h": 3600}
+
+
 def cache_integrity(records: Iterable[CallRecord]) -> list[str]:
     """Spec 5: verify caching actually happened before trusting a cost number.
 
-    Flags a repeated prefix that produced no cache read (a silent invalidator
-    somewhere in the prefix) and an agent with zero cache reads overall.
+    A repeated prefix that produced no cache read has two very different causes,
+    and calling them both "not byte-stable" sends a reader hunting a
+    nondeterminism bug that may not exist:
+
+    * **Within the TTL** -- something in the prefix really is varying (a
+      timestamp, a PR id, a re-serialized tool list). A genuine defect.
+    * **Past the TTL** -- the entry simply expired. Expected at this cadence: an
+      xhigh review of a 200k-token prompt streams for 6-8 minutes, so two calls
+      sharing a prefix routinely land further apart than the 5-minute default.
+      Not a defect, and worth reporting as evidence rather than as a warning
+      (spec 7e).
+
+    The prefix id is a hash of the prefix bytes, so an identical id across two
+    calls is itself proof of byte-stability -- which is why the elapsed time is
+    the only thing that can distinguish these.
     """
     problems: list[str] = []
-    seen: dict[tuple[str, str], int] = {}
+    seen: dict[tuple[str, str], CallRecord] = {}
     reads: dict[str, int] = {}
     writes: dict[str, int] = {}
+    expired: dict[str, int] = {}
     for rec in sorted(
         (r for r in records if r.billable), key=lambda r: (r.agent, r.seq)
     ):
@@ -291,18 +309,32 @@ def cache_integrity(records: Iterable[CallRecord]) -> list[str]:
         if not rec.prefix_id:
             continue
         key = (rec.agent, rec.prefix_id)
-        if key in seen and rec.usage.cache_read_input_tokens == 0:
-            problems.append(
-                f"{rec.agent}: prefix {rec.prefix_id} seen at seq {seen[key]} and "
-                f"again at seq {rec.seq}, but cache_read_input_tokens is 0 -- "
-                "the prefix is not byte-stable"
-            )
-        seen[key] = rec.seq
+        prev = seen.get(key)
+        if prev is not None and rec.usage.cache_read_input_tokens == 0:
+            ttl = CACHE_TTL_SECONDS.get(rec.cache_ttl, 300)
+            gap = rec.ts - prev.ts if rec.ts and prev.ts else 0.0
+            if gap > ttl:
+                expired[rec.agent] = expired.get(rec.agent, 0) + 1
+            else:
+                problems.append(
+                    f"{rec.agent}: prefix {rec.prefix_id} seen at seq {prev.seq} and "
+                    f"again at seq {rec.seq} only {gap:.0f}s apart (TTL {ttl}s), but "
+                    "cache_read_input_tokens is 0 -- something in the prefix is "
+                    "varying between calls"
+                )
+        seen[key] = rec
+    for agent, count in sorted(expired.items()):
+        problems.append(
+            f"{agent}: {count} repeat(s) of a byte-stable prefix missed the cache "
+            "because the entry had expired -- the calls are further apart than the "
+            "TTL. Expected at this review latency; it is why caching is inert here "
+            "(spec 7e), not a prefix bug."
+        )
     for agent, written in writes.items():
         if written and not reads.get(agent):
             problems.append(
                 f"{agent}: wrote {written} cache tokens and read none -- "
-                "every request is writing a distinct cache entry"
+                "no request ever reused a cache entry"
             )
     return problems
 
