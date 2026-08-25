@@ -2,11 +2,16 @@
 
 Two AI code reviewers read the same 19 real pull requests from `redis/redis-py`.
 Same model, same prompt, same everything — except one of them **remembers** what
-it has learned about the codebase, and the other starts from scratch every time.
+it has learned about the codebase using [Redis Agent Memory](https://redis.io/agent-memory/), and the other starts from scratch every time.
 
 **The idea:** most of a review agent's bill is spent re-learning the codebase
 before it even looks at the change. Memory makes that a one-time cost per
 *repository* instead of a cost per *pull request*.
+
+**The result:** a review costs **28–32% less**, the one-time learning pays for
+itself after **5 pull requests**, and review quality held up. Prompt caching
+cannot do this job — its longest lifetime is one hour, and real pull requests
+arrive days apart.
 
 ### How it works, in four steps
 
@@ -20,11 +25,6 @@ before it even looks at the change. Memory makes that a one-time cost per
    next PR touching the same file starts with them already in hand.
 4. **Count every token, memory included.** Every API call is logged and tagged,
    so the saving is always reported *net* of what running memory costs.
-
-**The result:** a review costs **28–32% less**, the one-time learning pays for
-itself after **5 pull requests**, and review quality held up. Prompt caching
-cannot do this job — its longest lifetime is one hour, and real pull requests
-arrive days apart.
 
 This repo is the experiment itself, not a product: the raw ledgers, the numbers
 net of overhead, and a page that replays them — including the parts that came out
