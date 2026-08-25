@@ -1,0 +1,1650 @@
+{
+  "agents": {
+    "baseline": {
+      "context_volume": 3890269,
+      "billed_usd": 33.543456,
+      "billed_usd_production": 33.766035,
+      "output_tokens": 568348,
+      "calls": 19,
+      "memory_overhead_usd": 0,
+      "truncated_calls": 0,
+      "cross_pr_read_tokens": 49462
+    },
+    "memory": {
+      "context_volume": 1884394,
+      "billed_usd": 25.3368515,
+      "billed_usd_production": 25.591227500000002,
+      "output_tokens": 642884,
+      "calls": 41,
+      "memory_overhead_usd": 3.4170900000000004,
+      "truncated_calls": 0,
+      "cross_pr_read_tokens": 56528
+    }
+  },
+  "breakeven": {
+    "as_measured": 6,
+    "production_equivalent": 6
+  },
+  "primer": {
+    "primer_calls": 4,
+    "primer_context_volume": 310191,
+    "primer_usd": 2.393705,
+    "prs": 19,
+    "primer_usd_per_pr": 0.12598447368421054
+  },
+  "cache_integrity": [
+    "baseline: 11 repeat(s) of a byte-stable prefix missed the cache because the entry had expired -- the calls are further apart than the TTL. Expected at this review latency; it is why caching is inert here (spec 7e), not a prefix bug.",
+    "memory: 10 repeat(s) of a byte-stable prefix missed the cache because the entry had expired -- the calls are further apart than the TTL. Expected at this review latency; it is why caching is inert here (spec 7e), not a prefix bug."
+  ],
+  "abandoned": {
+    "calls": 4,
+    "billed_usd": 2.2743300000000004,
+    "context_volume": 310191,
+    "seqs": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ]
+  },
+  "shared_prefix_freeriding": {},
+  "retrieval_mix": {
+    "per_pr": {
+      "1": {
+        "by_type": {
+          "repo_convention": 10
+        },
+        "unknown": 0,
+        "total": 10,
+        "saturated": true
+      },
+      "2": {
+        "by_type": {
+          "repo_convention": 10,
+          "review_finding": 2
+        },
+        "unknown": 0,
+        "total": 12,
+        "saturated": true
+      },
+      "3": {
+        "by_type": {
+          "repo_convention": 10
+        },
+        "unknown": 0,
+        "total": 10,
+        "saturated": true
+      },
+      "4": {
+        "by_type": {
+          "repo_convention": 10
+        },
+        "unknown": 0,
+        "total": 10,
+        "saturated": true
+      },
+      "5": {
+        "by_type": {
+          "repo_convention": 10,
+          "review_finding": 4
+        },
+        "unknown": 0,
+        "total": 14,
+        "saturated": true
+      },
+      "6": {
+        "by_type": {
+          "repo_convention": 10,
+          "review_finding": 6
+        },
+        "unknown": 0,
+        "total": 16,
+        "saturated": true
+      },
+      "7": {
+        "by_type": {
+          "repo_convention": 10,
+          "review_finding": 10
+        },
+        "unknown": 0,
+        "total": 20,
+        "saturated": true
+      },
+      "8": {
+        "by_type": {
+          "repo_convention": 10,
+          "review_finding": 8
+        },
+        "unknown": 0,
+        "total": 18,
+        "saturated": true
+      },
+      "9": {
+        "by_type": {
+          "repo_convention": 10,
+          "review_finding": 7
+        },
+        "unknown": 0,
+        "total": 17,
+        "saturated": true
+      },
+      "10": {
+        "by_type": {
+          "repo_convention": 10,
+          "review_finding": 7
+        },
+        "unknown": 0,
+        "total": 17,
+        "saturated": true
+      },
+      "11": {
+        "by_type": {
+          "repo_convention": 10,
+          "review_finding": 10
+        },
+        "unknown": 0,
+        "total": 20,
+        "saturated": true
+      },
+      "12": {
+        "by_type": {
+          "repo_convention": 10,
+          "review_finding": 10
+        },
+        "unknown": 0,
+        "total": 20,
+        "saturated": true
+      },
+      "13": {
+        "by_type": {
+          "repo_convention": 10,
+          "review_finding": 3
+        },
+        "unknown": 0,
+        "total": 13,
+        "saturated": true
+      },
+      "14": {
+        "by_type": {
+          "repo_convention": 10,
+          "review_finding": 10
+        },
+        "unknown": 0,
+        "total": 20,
+        "saturated": true
+      },
+      "15": {
+        "by_type": {
+          "repo_convention": 10,
+          "review_finding": 9
+        },
+        "unknown": 0,
+        "total": 19,
+        "saturated": true
+      },
+      "16": {
+        "by_type": {
+          "repo_convention": 10,
+          "review_finding": 10
+        },
+        "unknown": 0,
+        "total": 20,
+        "saturated": true
+      },
+      "17": {
+        "by_type": {
+          "repo_convention": 10,
+          "review_finding": 10
+        },
+        "unknown": 0,
+        "total": 20,
+        "saturated": true
+      },
+      "18": {
+        "by_type": {
+          "repo_convention": 10,
+          "review_finding": 10
+        },
+        "unknown": 0,
+        "total": 20,
+        "saturated": true
+      },
+      "19": {
+        "by_type": {
+          "repo_convention": 10,
+          "review_finding": 10
+        },
+        "unknown": 0,
+        "total": 20,
+        "saturated": true
+      }
+    },
+    "totals": {
+      "repo_convention": 190,
+      "review_finding": 126
+    },
+    "unknown": 0,
+    "saturated_prs": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "instrumented": true
+  },
+  "marginal": {
+    "as_measured": {
+      "regime": "as_measured",
+      "n_prs": 19,
+      "aggregate_pct": 31.60172136109052,
+      "mean_pct": 37.30215995208229,
+      "median_pct": 35.80185086648513,
+      "mean_saving_usd": 0.5579110263157894,
+      "baseline_mean_usd": 1.7654450526315788,
+      "memory_mean_usd": 1.2075340263157894,
+      "context_aggregate_pct": 59.534854787676636,
+      "primer_usd": 2.393705,
+      "primer_payback_prs": 4.2904780280236166,
+      "worst_pr": {
+        "pr_ordinal": 16,
+        "pr_id": "redis/redis-py#4131",
+        "saving_pct": 6.79654422821167,
+        "saving_usd": 0.08215000000000017
+      },
+      "best_pr": {
+        "pr_ordinal": 8,
+        "pr_id": "redis/redis-py#4059",
+        "saving_pct": 78.16275043085959,
+        "saving_usd": 0.5836905000000001
+      },
+      "per_pr": [
+        {
+          "pr_ordinal": 1,
+          "pr_id": "redis/redis-py#4025",
+          "baseline_usd": 2.9720575,
+          "memory_usd": 2.4444725000000003,
+          "saving_usd": 0.5275849999999997,
+          "saving_pct": 17.751507162967062,
+          "baseline_context": 383705,
+          "memory_context": 237033,
+          "context_pct": 38.225199046142215
+        },
+        {
+          "pr_ordinal": 2,
+          "pr_id": "redis/redis-py#4031",
+          "baseline_usd": 1.2947425000000001,
+          "memory_usd": 0.8930975000000001,
+          "saving_usd": 0.40164500000000003,
+          "saving_pct": 31.02122622838132,
+          "baseline_context": 162692,
+          "memory_context": 28198,
+          "context_pct": 82.66786320163253
+        },
+        {
+          "pr_ordinal": 3,
+          "pr_id": "redis/redis-py#4030",
+          "baseline_usd": 0.6273280000000001,
+          "memory_usd": 0.278903,
+          "saving_usd": 0.3484250000000001,
+          "saving_pct": 55.54112043460518,
+          "baseline_context": 107285,
+          "memory_context": 20345,
+          "context_pct": 81.03649158782682
+        },
+        {
+          "pr_ordinal": 4,
+          "pr_id": "redis/redis-py#4037",
+          "baseline_usd": 1.308293,
+          "memory_usd": 0.722973,
+          "saving_usd": 0.58532,
+          "saving_pct": 44.73921361652168,
+          "baseline_context": 153033,
+          "memory_context": 21554,
+          "context_pct": 85.91545614344618
+        },
+        {
+          "pr_ordinal": 5,
+          "pr_id": "redis/redis-py#4038",
+          "baseline_usd": 0.8626230000000001,
+          "memory_usd": 0.5537880000000001,
+          "saving_usd": 0.3088350000000001,
+          "saving_pct": 35.80185086648513,
+          "baseline_context": 123744,
+          "memory_context": 23647,
+          "context_pct": 80.89038660460305
+        },
+        {
+          "pr_ordinal": 6,
+          "pr_id": "redis/redis-py#4044",
+          "baseline_usd": 1.9494125000000002,
+          "memory_usd": 1.408078,
+          "saving_usd": 0.5413345000000003,
+          "saving_pct": 27.769109924143823,
+          "baseline_context": 193076,
+          "memory_context": 66170,
+          "context_pct": 65.72852141125774
+        },
+        {
+          "pr_ordinal": 7,
+          "pr_id": "redis/redis-py#4052",
+          "baseline_usd": 3.2701825,
+          "memory_usd": 2.8510175,
+          "saving_usd": 0.419165,
+          "saving_pct": 12.817786163310457,
+          "baseline_context": 503525,
+          "memory_context": 350382,
+          "context_pct": 30.41418003078298
+        },
+        {
+          "pr_ordinal": 8,
+          "pr_id": "redis/redis-py#4059",
+          "baseline_usd": 0.7467630000000001,
+          "memory_usd": 0.1630725,
+          "saving_usd": 0.5836905000000001,
+          "saving_pct": 78.16275043085959,
+          "baseline_context": 128962,
+          "memory_context": 16873,
+          "context_pct": 86.91630092585413
+        },
+        {
+          "pr_ordinal": 9,
+          "pr_id": "redis/redis-py#4054",
+          "baseline_usd": 1.183983,
+          "memory_usd": 0.5021530000000001,
+          "saving_usd": 0.6818299999999999,
+          "saving_pct": 57.58782009538988,
+          "baseline_context": 156571,
+          "memory_context": 25540,
+          "context_pct": 83.68791155450243
+        },
+        {
+          "pr_ordinal": 10,
+          "pr_id": "redis/redis-py#4067",
+          "baseline_usd": 1.307773,
+          "memory_usd": 0.45701800000000004,
+          "saving_usd": 0.850755,
+          "saving_pct": 65.05372109685702,
+          "baseline_context": 171374,
+          "memory_context": 23233,
+          "context_pct": 86.44310105383548
+        },
+        {
+          "pr_ordinal": 11,
+          "pr_id": "redis/redis-py#4055",
+          "baseline_usd": 1.158893,
+          "memory_usd": 0.533243,
+          "saving_usd": 0.6256499999999999,
+          "saving_pct": 53.98686505138955,
+          "baseline_context": 164113,
+          "memory_context": 46618,
+          "context_pct": 71.59396269643477
+        },
+        {
+          "pr_ordinal": 12,
+          "pr_id": "redis/redis-py#4068",
+          "baseline_usd": 1.6474075,
+          "memory_usd": 0.796538,
+          "saving_usd": 0.8508695,
+          "saving_pct": 51.64900001972797,
+          "baseline_context": 166930,
+          "memory_context": 32717,
+          "context_pct": 80.40076678847421
+        },
+        {
+          "pr_ordinal": 13,
+          "pr_id": "redis/redis-py#4063",
+          "baseline_usd": 1.7699575,
+          "memory_usd": 1.0680925000000001,
+          "saving_usd": 0.701865,
+          "saving_pct": 39.65434198278772,
+          "baseline_context": 160565,
+          "memory_context": 24742,
+          "context_pct": 84.59066421698378
+        },
+        {
+          "pr_ordinal": 14,
+          "pr_id": "redis/redis-py#4082",
+          "baseline_usd": 1.6748775,
+          "memory_usd": 1.0587925,
+          "saving_usd": 0.616085,
+          "saving_pct": 36.783884194515714,
+          "baseline_context": 185254,
+          "memory_context": 57437,
+          "context_pct": 68.99554125686895
+        },
+        {
+          "pr_ordinal": 15,
+          "pr_id": "redis/redis-py#4114",
+          "baseline_usd": 2.6435425000000006,
+          "memory_usd": 2.0385275000000003,
+          "saving_usd": 0.6050150000000003,
+          "saving_pct": 22.886524426976308,
+          "baseline_context": 208702,
+          "memory_context": 80209,
+          "context_pct": 61.56768981610143
+        },
+        {
+          "pr_ordinal": 16,
+          "pr_id": "redis/redis-py#4131",
+          "baseline_usd": 1.2087025000000002,
+          "memory_usd": 1.1265525,
+          "saving_usd": 0.08215000000000017,
+          "saving_pct": 6.79654422821167,
+          "baseline_context": 52539,
+          "memory_context": 59379,
+          "context_pct": -13.01890024553189
+        },
+        {
+          "pr_ordinal": 17,
+          "pr_id": "redis/redis-py#4177",
+          "baseline_usd": 2.9570375,
+          "memory_usd": 2.1876625,
+          "saving_usd": 0.7693750000000001,
+          "saving_pct": 26.01843906274439,
+          "baseline_context": 335171,
+          "memory_context": 200351,
+          "context_pct": 40.22424374423802
+        },
+        {
+          "pr_ordinal": 18,
+          "pr_id": "redis/redis-py#4205",
+          "baseline_usd": 2.3708725,
+          "memory_usd": 1.7505675,
+          "saving_usd": 0.6203049999999999,
+          "saving_pct": 26.16357480210344,
+          "baseline_context": 241688,
+          "memory_context": 114012,
+          "context_pct": 52.82678494588064
+        },
+        {
+          "pr_ordinal": 19,
+          "pr_id": "redis/redis-py#4272",
+          "baseline_usd": 2.5890075,
+          "memory_usd": 2.1085975,
+          "saving_usd": 0.48041,
+          "saving_pct": 18.555759301585645,
+          "baseline_context": 291340,
+          "memory_context": 145763,
+          "context_pct": 49.968078533672
+        }
+      ]
+    },
+    "production_equivalent": {
+      "regime": "production_equivalent",
+      "n_prs": 19,
+      "aggregate_pct": 31.29924049418299,
+      "mean_pct": 36.6613670818385,
+      "median_pct": 34.52908029784665,
+      "mean_saving_usd": 0.5562375,
+      "baseline_mean_usd": 1.7771597368421055,
+      "memory_mean_usd": 1.2209222368421053,
+      "context_aggregate_pct": 59.534854787676636,
+      "primer_usd": 2.393705,
+      "primer_payback_prs": 4.303386592957145,
+      "worst_pr": {
+        "pr_ordinal": 16,
+        "pr_id": "redis/redis-py#4131",
+        "saving_pct": 6.79654422821167,
+        "saving_usd": 0.08215000000000017
+      },
+      "best_pr": {
+        "pr_ordinal": 8,
+        "pr_id": "redis/redis-py#4059",
+        "saving_pct": 79.05460080147965,
+        "saving_usd": 0.6154875
+      },
+      "per_pr": [
+        {
+          "pr_ordinal": 1,
+          "pr_id": "redis/redis-py#4025",
+          "baseline_usd": 2.9720575,
+          "memory_usd": 2.4444725000000003,
+          "saving_usd": 0.5275849999999997,
+          "saving_pct": 17.751507162967062,
+          "baseline_context": 383705,
+          "memory_context": 237033,
+          "context_pct": 38.225199046142215
+        },
+        {
+          "pr_ordinal": 2,
+          "pr_id": "redis/redis-py#4031",
+          "baseline_usd": 1.2947425000000001,
+          "memory_usd": 0.8930975000000001,
+          "saving_usd": 0.40164500000000003,
+          "saving_pct": 31.02122622838132,
+          "baseline_context": 162692,
+          "memory_context": 28198,
+          "context_pct": 82.66786320163253
+        },
+        {
+          "pr_ordinal": 3,
+          "pr_id": "redis/redis-py#4030",
+          "baseline_usd": 0.6591250000000001,
+          "memory_usd": 0.31070000000000003,
+          "saving_usd": 0.34842500000000004,
+          "saving_pct": 52.861748530248434,
+          "baseline_context": 107285,
+          "memory_context": 20345,
+          "context_pct": 81.03649158782682
+        },
+        {
+          "pr_ordinal": 4,
+          "pr_id": "redis/redis-py#4037",
+          "baseline_usd": 1.34009,
+          "memory_usd": 0.75477,
+          "saving_usd": 0.58532,
+          "saving_pct": 43.67766344051519,
+          "baseline_context": 153033,
+          "memory_context": 21554,
+          "context_pct": 85.91545614344618
+        },
+        {
+          "pr_ordinal": 5,
+          "pr_id": "redis/redis-py#4038",
+          "baseline_usd": 0.89442,
+          "memory_usd": 0.585585,
+          "saving_usd": 0.30883499999999997,
+          "saving_pct": 34.52908029784665,
+          "baseline_context": 123744,
+          "memory_context": 23647,
+          "context_pct": 80.89038660460305
+        },
+        {
+          "pr_ordinal": 6,
+          "pr_id": "redis/redis-py#4044",
+          "baseline_usd": 1.9494125000000002,
+          "memory_usd": 1.4398749999999998,
+          "saving_usd": 0.5095375000000004,
+          "saving_pct": 26.138003116323528,
+          "baseline_context": 193076,
+          "memory_context": 66170,
+          "context_pct": 65.72852141125774
+        },
+        {
+          "pr_ordinal": 7,
+          "pr_id": "redis/redis-py#4052",
+          "baseline_usd": 3.2701825,
+          "memory_usd": 2.8510175,
+          "saving_usd": 0.419165,
+          "saving_pct": 12.817786163310457,
+          "baseline_context": 503525,
+          "memory_context": 350382,
+          "context_pct": 30.41418003078298
+        },
+        {
+          "pr_ordinal": 8,
+          "pr_id": "redis/redis-py#4059",
+          "baseline_usd": 0.77856,
+          "memory_usd": 0.1630725,
+          "saving_usd": 0.6154875,
+          "saving_pct": 79.05460080147965,
+          "baseline_context": 128962,
+          "memory_context": 16873,
+          "context_pct": 86.91630092585413
+        },
+        {
+          "pr_ordinal": 9,
+          "pr_id": "redis/redis-py#4054",
+          "baseline_usd": 1.21578,
+          "memory_usd": 0.53395,
+          "saving_usd": 0.68183,
+          "saving_pct": 56.081692411456025,
+          "baseline_context": 156571,
+          "memory_context": 25540,
+          "context_pct": 83.68791155450243
+        },
+        {
+          "pr_ordinal": 10,
+          "pr_id": "redis/redis-py#4067",
+          "baseline_usd": 1.3395700000000001,
+          "memory_usd": 0.488815,
+          "saving_usd": 0.8507550000000001,
+          "saving_pct": 63.509559037601626,
+          "baseline_context": 171374,
+          "memory_context": 23233,
+          "context_pct": 86.44310105383548
+        },
+        {
+          "pr_ordinal": 11,
+          "pr_id": "redis/redis-py#4055",
+          "baseline_usd": 1.19069,
+          "memory_usd": 0.5650400000000001,
+          "saving_usd": 0.6256499999999999,
+          "saving_pct": 52.545162888745175,
+          "baseline_context": 164113,
+          "memory_context": 46618,
+          "context_pct": 71.59396269643477
+        },
+        {
+          "pr_ordinal": 12,
+          "pr_id": "redis/redis-py#4068",
+          "baseline_usd": 1.6474075,
+          "memory_usd": 0.828335,
+          "saving_usd": 0.8190724999999999,
+          "saving_pct": 49.71887647713149,
+          "baseline_context": 166930,
+          "memory_context": 32717,
+          "context_pct": 80.40076678847421
+        },
+        {
+          "pr_ordinal": 13,
+          "pr_id": "redis/redis-py#4063",
+          "baseline_usd": 1.7699575,
+          "memory_usd": 1.0680925000000001,
+          "saving_usd": 0.701865,
+          "saving_pct": 39.65434198278772,
+          "baseline_context": 160565,
+          "memory_context": 24742,
+          "context_pct": 84.59066421698378
+        },
+        {
+          "pr_ordinal": 14,
+          "pr_id": "redis/redis-py#4082",
+          "baseline_usd": 1.6748775,
+          "memory_usd": 1.0587925,
+          "saving_usd": 0.616085,
+          "saving_pct": 36.783884194515714,
+          "baseline_context": 185254,
+          "memory_context": 57437,
+          "context_pct": 68.99554125686895
+        },
+        {
+          "pr_ordinal": 15,
+          "pr_id": "redis/redis-py#4114",
+          "baseline_usd": 2.6435425000000006,
+          "memory_usd": 2.0385275000000003,
+          "saving_usd": 0.6050150000000003,
+          "saving_pct": 22.886524426976308,
+          "baseline_context": 208702,
+          "memory_context": 80209,
+          "context_pct": 61.56768981610143
+        },
+        {
+          "pr_ordinal": 16,
+          "pr_id": "redis/redis-py#4131",
+          "baseline_usd": 1.2087025000000002,
+          "memory_usd": 1.1265525,
+          "saving_usd": 0.08215000000000017,
+          "saving_pct": 6.79654422821167,
+          "baseline_context": 52539,
+          "memory_context": 59379,
+          "context_pct": -13.01890024553189
+        },
+        {
+          "pr_ordinal": 17,
+          "pr_id": "redis/redis-py#4177",
+          "baseline_usd": 2.9570375,
+          "memory_usd": 2.1876625,
+          "saving_usd": 0.7693750000000001,
+          "saving_pct": 26.01843906274439,
+          "baseline_context": 335171,
+          "memory_context": 200351,
+          "context_pct": 40.22424374423802
+        },
+        {
+          "pr_ordinal": 18,
+          "pr_id": "redis/redis-py#4205",
+          "baseline_usd": 2.3708725,
+          "memory_usd": 1.7505675,
+          "saving_usd": 0.6203049999999999,
+          "saving_pct": 26.16357480210344,
+          "baseline_context": 241688,
+          "memory_context": 114012,
+          "context_pct": 52.82678494588064
+        },
+        {
+          "pr_ordinal": 19,
+          "pr_id": "redis/redis-py#4272",
+          "baseline_usd": 2.5890075,
+          "memory_usd": 2.1085975,
+          "saving_usd": 0.48041,
+          "saving_pct": 18.555759301585645,
+          "baseline_context": 291340,
+          "memory_context": 145763,
+          "context_pct": 49.968078533672
+        }
+      ]
+    }
+  },
+  "phases": [
+    "prime",
+    "retrieve",
+    "review",
+    "write"
+  ],
+  "per_pr": [
+    {
+      "agent": "baseline",
+      "pr_ordinal": 1,
+      "pr_id": "redis/redis-py#4025",
+      "context_volume": 383705,
+      "billed_usd": 2.9720575,
+      "billed_usd_production": 2.9720575,
+      "output_tokens": 41788,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 383705
+      },
+      "tiers": {
+        "uncached": 376639,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 2,
+      "pr_id": "redis/redis-py#4031",
+      "context_volume": 162692,
+      "billed_usd": 1.2947425000000001,
+      "billed_usd_production": 1.2947425000000001,
+      "output_tokens": 18898,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 162692
+      },
+      "tiers": {
+        "uncached": 155626,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 3,
+      "pr_id": "redis/redis-py#4030",
+      "context_volume": 107285,
+      "billed_usd": 0.6273280000000001,
+      "billed_usd_production": 0.6591250000000001,
+      "output_tokens": 4908,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 107285
+      },
+      "tiers": {
+        "uncached": 100219,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 4,
+      "pr_id": "redis/redis-py#4037",
+      "context_volume": 153033,
+      "billed_usd": 1.308293,
+      "billed_usd_production": 1.34009,
+      "output_tokens": 22997,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 153033
+      },
+      "tiers": {
+        "uncached": 145967,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 5,
+      "pr_id": "redis/redis-py#4038",
+      "context_volume": 123744,
+      "billed_usd": 0.8626230000000001,
+      "billed_usd_production": 0.89442,
+      "output_tokens": 11028,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 123744
+      },
+      "tiers": {
+        "uncached": 116678,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 6,
+      "pr_id": "redis/redis-py#4044",
+      "context_volume": 193076,
+      "billed_usd": 1.9494125000000002,
+      "billed_usd_production": 1.9494125000000002,
+      "output_tokens": 39008,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 193076
+      },
+      "tiers": {
+        "uncached": 186010,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 7,
+      "pr_id": "redis/redis-py#4052",
+      "context_volume": 503525,
+      "billed_usd": 3.2701825,
+      "billed_usd_production": 3.2701825,
+      "output_tokens": 29749,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 503525
+      },
+      "tiers": {
+        "uncached": 496459,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 8,
+      "pr_id": "redis/redis-py#4059",
+      "context_volume": 128962,
+      "billed_usd": 0.7467630000000001,
+      "billed_usd_production": 0.77856,
+      "output_tokens": 5350,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 128962
+      },
+      "tiers": {
+        "uncached": 121896,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 9,
+      "pr_id": "redis/redis-py#4054",
+      "context_volume": 156571,
+      "billed_usd": 1.183983,
+      "billed_usd_production": 1.21578,
+      "output_tokens": 17317,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 156571
+      },
+      "tiers": {
+        "uncached": 149505,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 10,
+      "pr_id": "redis/redis-py#4067",
+      "context_volume": 171374,
+      "billed_usd": 1.307773,
+      "billed_usd_production": 1.3395700000000001,
+      "output_tokens": 19308,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 171374
+      },
+      "tiers": {
+        "uncached": 164308,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 11,
+      "pr_id": "redis/redis-py#4055",
+      "context_volume": 164113,
+      "billed_usd": 1.158893,
+      "billed_usd_production": 1.19069,
+      "output_tokens": 14805,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 164113
+      },
+      "tiers": {
+        "uncached": 157047,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 12,
+      "pr_id": "redis/redis-py#4068",
+      "context_volume": 166930,
+      "billed_usd": 1.6474075,
+      "billed_usd_production": 1.6474075,
+      "output_tokens": 32157,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 166930
+      },
+      "tiers": {
+        "uncached": 159864,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 13,
+      "pr_id": "redis/redis-py#4063",
+      "context_volume": 160565,
+      "billed_usd": 1.7699575,
+      "billed_usd_production": 1.7699575,
+      "output_tokens": 38332,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 160565
+      },
+      "tiers": {
+        "uncached": 153499,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 14,
+      "pr_id": "redis/redis-py#4082",
+      "context_volume": 185254,
+      "billed_usd": 1.6748775,
+      "billed_usd_production": 1.6748775,
+      "output_tokens": 29591,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 185254
+      },
+      "tiers": {
+        "uncached": 178188,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 15,
+      "pr_id": "redis/redis-py#4114",
+      "context_volume": 208702,
+      "billed_usd": 2.6435425000000006,
+      "billed_usd_production": 2.6435425000000006,
+      "output_tokens": 63648,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 208702
+      },
+      "tiers": {
+        "uncached": 201636,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 16,
+      "pr_id": "redis/redis-py#4131",
+      "context_volume": 52539,
+      "billed_usd": 1.2087025000000002,
+      "billed_usd_production": 1.2087025000000002,
+      "output_tokens": 37487,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 52539
+      },
+      "tiers": {
+        "uncached": 45473,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 17,
+      "pr_id": "redis/redis-py#4177",
+      "context_volume": 335171,
+      "billed_usd": 2.9570375,
+      "billed_usd_production": 2.9570375,
+      "output_tokens": 50894,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 335171
+      },
+      "tiers": {
+        "uncached": 328105,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 18,
+      "pr_id": "redis/redis-py#4205",
+      "context_volume": 241688,
+      "billed_usd": 2.3708725,
+      "billed_usd_production": 2.3708725,
+      "output_tokens": 46144,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 241688
+      },
+      "tiers": {
+        "uncached": 234622,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "baseline",
+      "pr_ordinal": 19,
+      "pr_id": "redis/redis-py#4272",
+      "context_volume": 291340,
+      "billed_usd": 2.5890075,
+      "billed_usd_production": 2.5890075,
+      "output_tokens": 44939,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 291340
+      },
+      "tiers": {
+        "uncached": 284274,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 0,
+      "pr_id": "prime",
+      "context_volume": 310191,
+      "billed_usd": 2.393705,
+      "billed_usd_production": 2.393705,
+      "output_tokens": 33710,
+      "calls": 4,
+      "memory_overhead_usd": 2.393705,
+      "by_phase": {
+        "prime": 310191
+      },
+      "tiers": {
+        "uncached": 310191,
+        "cache_write": 0,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 0,
+      "memories_returned": 0,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 1,
+      "pr_id": "redis/redis-py#4025",
+      "context_volume": 237033,
+      "billed_usd": 2.4444725000000003,
+      "billed_usd_production": 2.4444725000000003,
+      "output_tokens": 50019,
+      "calls": 2,
+      "memory_overhead_usd": 0.095985,
+      "by_phase": {
+        "review": 233566,
+        "write": 3467
+      },
+      "tiers": {
+        "uncached": 229967,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 1834,
+      "memories_returned": 10,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 2,
+      "pr_id": "redis/redis-py#4031",
+      "context_volume": 28198,
+      "billed_usd": 0.8930975000000001,
+      "billed_usd_production": 0.8930975000000001,
+      "output_tokens": 29731,
+      "calls": 2,
+      "memory_overhead_usd": 0.06606500000000001,
+      "by_phase": {
+        "review": 26340,
+        "write": 1858
+      },
+      "tiers": {
+        "uncached": 21132,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 2292,
+      "memories_returned": 12,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 3,
+      "pr_id": "redis/redis-py#4030",
+      "context_volume": 20345,
+      "billed_usd": 0.278903,
+      "billed_usd_production": 0.31070000000000003,
+      "output_tokens": 8359,
+      "calls": 2,
+      "memory_overhead_usd": 0.03751,
+      "by_phase": {
+        "review": 18508,
+        "write": 1837
+      },
+      "tiers": {
+        "uncached": 13279,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 1733,
+      "memories_returned": 10,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 4,
+      "pr_id": "redis/redis-py#4037",
+      "context_volume": 21554,
+      "billed_usd": 0.722973,
+      "billed_usd_production": 0.75477,
+      "output_tokens": 25880,
+      "calls": 2,
+      "memory_overhead_usd": 0.045895000000000005,
+      "by_phase": {
+        "review": 19700,
+        "write": 1854
+      },
+      "tiers": {
+        "uncached": 14488,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 1943,
+      "memories_returned": 10,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 5,
+      "pr_id": "redis/redis-py#4038",
+      "context_volume": 23647,
+      "billed_usd": 0.5537880000000001,
+      "billed_usd_production": 0.585585,
+      "output_tokens": 18694,
+      "calls": 2,
+      "memory_overhead_usd": 0.03615,
+      "by_phase": {
+        "review": 22222,
+        "write": 1425
+      },
+      "tiers": {
+        "uncached": 16581,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 2883,
+      "memories_returned": 14,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 6,
+      "pr_id": "redis/redis-py#4044",
+      "context_volume": 66170,
+      "billed_usd": 1.408078,
+      "billed_usd_production": 1.4398749999999998,
+      "output_tokens": 44361,
+      "calls": 2,
+      "memory_overhead_usd": 0.05781,
+      "by_phase": {
+        "review": 63718,
+        "write": 2452
+      },
+      "tiers": {
+        "uncached": 59104,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 3304,
+      "memories_returned": 16,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 7,
+      "pr_id": "redis/redis-py#4052",
+      "context_volume": 350382,
+      "billed_usd": 2.8510175,
+      "billed_usd_production": 2.8510175,
+      "output_tokens": 43611,
+      "calls": 2,
+      "memory_overhead_usd": 0.09190000000000001,
+      "by_phase": {
+        "review": 347137,
+        "write": 3245
+      },
+      "tiers": {
+        "uncached": 343316,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 4012,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 8,
+      "pr_id": "redis/redis-py#4059",
+      "context_volume": 16873,
+      "billed_usd": 0.1630725,
+      "billed_usd_production": 0.1630725,
+      "output_tokens": 2795,
+      "calls": 1,
+      "memory_overhead_usd": 0,
+      "by_phase": {
+        "review": 16873
+      },
+      "tiers": {
+        "uncached": 9807,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 3126,
+      "memories_returned": 18,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 9,
+      "pr_id": "redis/redis-py#4054",
+      "context_volume": 25540,
+      "billed_usd": 0.5021530000000001,
+      "billed_usd_production": 0.53395,
+      "output_tokens": 16250,
+      "calls": 2,
+      "memory_overhead_usd": 0.025455000000000002,
+      "by_phase": {
+        "review": 24049,
+        "write": 1491
+      },
+      "tiers": {
+        "uncached": 18474,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 3109,
+      "memories_returned": 17,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 10,
+      "pr_id": "redis/redis-py#4067",
+      "context_volume": 23233,
+      "billed_usd": 0.45701800000000004,
+      "billed_usd_production": 0.488815,
+      "output_tokens": 14906,
+      "calls": 2,
+      "memory_overhead_usd": 0.027335,
+      "by_phase": {
+        "review": 21946,
+        "write": 1287
+      },
+      "tiers": {
+        "uncached": 16167,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 2921,
+      "memories_returned": 17,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 11,
+      "pr_id": "redis/redis-py#4055",
+      "context_volume": 46618,
+      "billed_usd": 0.533243,
+      "billed_usd_production": 0.5650400000000001,
+      "output_tokens": 13278,
+      "calls": 2,
+      "memory_overhead_usd": 0.043335000000000005,
+      "by_phase": {
+        "review": 44411,
+        "write": 2207
+      },
+      "tiers": {
+        "uncached": 39552,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 3513,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 12,
+      "pr_id": "redis/redis-py#4068",
+      "context_volume": 32717,
+      "billed_usd": 0.796538,
+      "billed_usd_production": 0.828335,
+      "output_tokens": 26590,
+      "calls": 2,
+      "memory_overhead_usd": 0.08277000000000001,
+      "by_phase": {
+        "review": 30688,
+        "write": 2029
+      },
+      "tiers": {
+        "uncached": 25651,
+        "cache_write": 0,
+        "cache_read": 7066
+      },
+      "cross_pr_read_tokens": 7066,
+      "injected_tokens": 3970,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 13,
+      "pr_id": "redis/redis-py#4063",
+      "context_volume": 24742,
+      "billed_usd": 1.0680925000000001,
+      "billed_usd_production": 1.0680925000000001,
+      "output_tokens": 37422,
+      "calls": 2,
+      "memory_overhead_usd": 0.054745,
+      "by_phase": {
+        "review": 22808,
+        "write": 1934
+      },
+      "tiers": {
+        "uncached": 17676,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 2277,
+      "memories_returned": 13,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 14,
+      "pr_id": "redis/redis-py#4082",
+      "context_volume": 57437,
+      "billed_usd": 1.0587925,
+      "billed_usd_production": 1.0587925,
+      "output_tokens": 30511,
+      "calls": 2,
+      "memory_overhead_usd": 0.061745,
+      "by_phase": {
+        "review": 55218,
+        "write": 2219
+      },
+      "tiers": {
+        "uncached": 50371,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 4030,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 15,
+      "pr_id": "redis/redis-py#4114",
+      "context_volume": 80209,
+      "billed_usd": 2.0385275000000003,
+      "billed_usd_production": 2.0385275000000003,
+      "output_tokens": 65146,
+      "calls": 2,
+      "memory_overhead_usd": 0.057625,
+      "by_phase": {
+        "review": 77964,
+        "write": 2245
+      },
+      "tiers": {
+        "uncached": 73143,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 3759,
+      "memories_returned": 19,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 16,
+      "pr_id": "redis/redis-py#4131",
+      "context_volume": 59379,
+      "billed_usd": 1.1265525,
+      "billed_usd_production": 1.1265525,
+      "output_tokens": 32833,
+      "calls": 2,
+      "memory_overhead_usd": 0.07906,
+      "by_phase": {
+        "review": 56667,
+        "write": 2712
+      },
+      "tiers": {
+        "uncached": 52313,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 4134,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 17,
+      "pr_id": "redis/redis-py#4177",
+      "context_volume": 200351,
+      "billed_usd": 2.1876625,
+      "billed_usd_production": 2.1876625,
+      "output_tokens": 47083,
+      "calls": 2,
+      "memory_overhead_usd": 0.0375,
+      "by_phase": {
+        "review": 198326,
+        "write": 2025
+      },
+      "tiers": {
+        "uncached": 193285,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 4083,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 18,
+      "pr_id": "redis/redis-py#4205",
+      "context_volume": 114012,
+      "billed_usd": 1.7505675,
+      "billed_usd_production": 1.7505675,
+      "output_tokens": 46867,
+      "calls": 2,
+      "memory_overhead_usd": 0.088225,
+      "by_phase": {
+        "review": 110982,
+        "write": 3030
+      },
+      "tiers": {
+        "uncached": 106946,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 3530,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    },
+    {
+      "agent": "memory",
+      "pr_ordinal": 19,
+      "pr_id": "redis/redis-py#4272",
+      "context_volume": 145763,
+      "billed_usd": 2.1085975,
+      "billed_usd_production": 2.1085975,
+      "output_tokens": 54838,
+      "calls": 2,
+      "memory_overhead_usd": 0.034275,
+      "by_phase": {
+        "review": 144038,
+        "write": 1725
+      },
+      "tiers": {
+        "uncached": 138697,
+        "cache_write": 7066,
+        "cache_read": 0
+      },
+      "cross_pr_read_tokens": 0,
+      "injected_tokens": 3794,
+      "memories_returned": 20,
+      "truncated_calls": 0
+    }
+  ]
+}

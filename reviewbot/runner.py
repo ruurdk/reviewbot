@@ -28,7 +28,9 @@ from .agents import BaselineAgent, MemoryAgent, ReviewOutcome
 from .config import ModelConfig, assert_comparable
 from .dataset import Sequence as PRSequence
 from .dataset import summary as dataset_summary
+from .claude import Tags
 from .github import PRStore, PullRequest
+from .memory import Memory
 from .quality import (
     GoldLabels,
     aggregate_gold,
@@ -204,9 +206,63 @@ class SequenceRunner:
             "dataset": dataset_summary(self.sequence, self.store),
             "gold_labelled_prs": sorted(self.gold),
             "extraction_mode": "explicit client-side writes; automatic extraction off",
+            # The retrieval config is NOT part of ModelConfig.fingerprint(), so
+            # without this a run that changed only the retrieval shape produces a
+            # manifest byte-identical to one that did not -- and the difference
+            # between the two runs becomes unrecoverable from the artifacts.
+            "retrieval": self.retrieval_manifest(),
+            "writes": self.write_policy_manifest(),
         }
         self.ledger.write_manifest(manifest)
         return manifest
+
+    def retrieval_manifest(self) -> dict[str, Any]:
+        """How the memory agent was asked to retrieve, recorded per run.
+
+        `shape` is pooled vs split: one search sharing a budget across memory
+        types, or one search per type with its own. It is the variable spec 7f
+        exists to test, and it leaves no other trace in the artifacts -- the
+        ledger's search rows record the limit that was *used*, which for a
+        pooled run and a split run that happen to share a number look alike.
+        """
+        memory = self.agents.get("memory")
+        if memory is None:
+            return {"shape": "none", "reason": "no memory agent in this run"}
+        if memory.retrieval_limits:
+            return {
+                "shape": "split",
+                "limits": dict(sorted(memory.retrieval_limits.items())),
+                "total_budget": sum(memory.retrieval_limits.values()),
+                "similarity_threshold": memory.similarity_threshold,
+            }
+        return {
+            "shape": "pooled",
+            "limit": memory.retrieval_limit,
+            "total_budget": memory.retrieval_limit,
+            "similarity_threshold": memory.similarity_threshold,
+        }
+
+    def write_policy_manifest(self) -> dict[str, Any]:
+        """How the memory agent was asked to persist, recorded per run.
+
+        Like the retrieval shape, neither knob is part of
+        ModelConfig.fingerprint(), and `dedupe` changes the *id scheme* -- so a
+        run with it on and a run with it off produce stores that cannot be
+        compared record-for-record. That has to be visible in the artifacts.
+        """
+        memory = self.agents.get("memory")
+        if memory is None:
+            return {"shape": "none", "reason": "no memory agent in this run"}
+        return {
+            "shape": "dedupe" if memory.dedupe_writes else "append-only",
+            "dedupe": memory.dedupe_writes,
+            "distill": memory.distill_writes,
+            "id_scheme": (
+                "find-{module}-{topic}"
+                if memory.dedupe_writes
+                else "find-{module}-{topic}-{ordinal}"
+            ),
+        }
 
     def prime(self) -> int:
         """Run the primer once, before the sequence. Returns records written.
@@ -223,6 +279,21 @@ class SequenceRunner:
             primed = json.loads(marker.read_text())
             if primed.get("namespace") == memory.memory.namespace:
                 memory.primed_ids.extend(primed.get("ids") or [])
+                # Re-create from the marker rather than trusting the store. The
+                # marker means "we already paid the model calls", not "every
+                # record is present": a bulk create can report an id it never
+                # stored, so a resume is the natural place to repair that. Both
+                # calls are non-billable and creates are idempotent.
+                saved = [
+                    Memory(**{**r, "namespace": memory.memory.namespace})
+                    for r in (primed.get("records") or [])
+                ]
+                if saved:
+                    tags = Tags(memory.name, "prime", 0, "prime")
+                    memory.memory.create(saved, tags)
+                    memory.memory.wait_for_visibility(
+                        [r.id for r in saved], tags=tags, records=saved
+                    )
                 return 0
         sha = self.sequence.frozen_at_sha
         if not sha:
@@ -239,19 +310,35 @@ class SequenceRunner:
                 f"none of the spine modules were readable at {sha}: {self.sequence.spine}"
             )
         docs = read_docs(self.provider, self.sequence.style_guide_paths, sha)
-        records = memory.prime(sources, docs=docs)
-        marker.write_text(
-            json.dumps(
-                {
-                    "namespace": memory.memory.namespace,
-                    "frozen_at_sha": sha,
-                    "modules": sorted(sources),
-                    "ids": [r.id for r in records],
-                },
-                indent=2,
+
+        def checkpoint(records: list[Memory]) -> None:
+            # The full records, not just their ids: this is what lets a resume
+            # repair a dropped write without re-paying a single model call.
+            marker.write_text(
+                json.dumps(
+                    {
+                        "namespace": memory.memory.namespace,
+                        "frozen_at_sha": sha,
+                        "modules": sorted(sources),
+                        "ids": [r.id for r in records],
+                        "records": [
+                            {
+                                "id": r.id,
+                                "text": r.text,
+                                "memory_type": r.memory_type,
+                                "owner_id": r.owner_id,
+                                "topics": list(r.topics),
+                                "attributes": dict(r.attributes),
+                            }
+                            for r in records
+                        ],
+                    },
+                    indent=2,
+                )
+                + "\n"
             )
-            + "\n"
-        )
+
+        records = memory.prime(sources, docs=docs, after_create=checkpoint)
         return len(records)
 
     def review_pr(self, pr: PullRequest, ordinal: int) -> PRResult:

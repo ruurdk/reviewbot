@@ -4,6 +4,7 @@ import unittest
 from reviewbot.accounting import Ledger
 from reviewbot.claude import Tags
 from reviewbot.memory import (
+    MAX_SEARCH_LIMIT,
     MAX_TEXT_LEN,
     REPO_CONVENTION,
     REVIEW_FINDING,
@@ -12,8 +13,12 @@ from reviewbot.memory import (
     NotVisible,
     PartialWrite,
     MemoryError_,
+    decode_ordinal_attr,
     memory_id,
+    memory_type_of,
     module_topics,
+    ordinal_attr,
+    parse_retrieval_split,
     resolve_module,
     resolve_modules,
     scoped_filter,
@@ -427,3 +432,194 @@ class TestAttributeEncoding(unittest.TestCase):
         record = conv("c-x", "text", "a.py", pr_ordinal=7)
         self.assertEqual(record.attributes["pr_ordinal"], 7)  # readable in Python
         self.assertEqual(record.to_create()["attributes"]["pr_ordinal"], "007")
+
+
+class TestMemoryTypeFromId(unittest.TestCase):
+    """A search response has no memoryType and no attributes, so the id prefix
+    is the only thing that can classify a retrieved record without a GET."""
+
+    def test_every_minted_id_carries_its_types_prefix(self):
+        self.assertEqual(
+            memory_type_of(memory_id("conv", "redis/connection.py", "topic")),
+            REPO_CONVENTION,
+        )
+        self.assertEqual(
+            memory_type_of(memory_id("find", "redis/cluster.py", "topic", "4")),
+            REVIEW_FINDING,
+        )
+
+    def test_a_hashed_long_id_is_still_classifiable(self):
+        # The hash replaces the tail, never the prefix -- otherwise exactly the
+        # longest-path memories would become unattributable.
+        long_id = memory_id("find", "redis/asyncio/cluster.py", "x" * 60, "12")
+        self.assertEqual(memory_type_of(long_id), REVIEW_FINDING)
+
+    def test_an_id_from_elsewhere_is_None_not_a_guess(self):
+        self.assertIsNone(memory_type_of("someone-elses-record"))
+        self.assertIsNone(memory_type_of("conventional-not-a-prefix"))
+
+
+class TestParseRetrievalSplit(unittest.TestCase):
+    def test_short_and_long_names_both_work(self):
+        self.assertEqual(
+            parse_retrieval_split("conv=10,find=10"),
+            {REPO_CONVENTION: 10, REVIEW_FINDING: 10},
+        )
+        self.assertEqual(
+            parse_retrieval_split("repo_convention=4"), {REPO_CONVENTION: 4}
+        )
+
+    def test_an_unknown_type_raises_instead_of_being_dropped(self):
+        # The service ignores unknown fields in a search body, so a typo that
+        # reached the wire would return 200 with a quietly wrong mix.
+        with self.assertRaises(ValueError) as ctx:
+            parse_retrieval_split("conventions=10")
+        self.assertIn("unknown memory type", str(ctx.exception))
+
+    def test_an_out_of_range_limit_is_rejected_here_not_at_the_wire(self):
+        with self.assertRaises(ValueError):
+            parse_retrieval_split("conv=0")
+        with self.assertRaises(ValueError):
+            parse_retrieval_split(f"conv={MAX_SEARCH_LIMIT + 1}")
+
+    def test_a_pair_without_a_limit_is_rejected(self):
+        with self.assertRaises(ValueError):
+            parse_retrieval_split("conv")
+
+
+class TestSearchLogsWhichRecordsCameBack(unittest.TestCase):
+    """Counts cannot answer the question compaction hinges on -- whether the
+    growing findings win slots or the primed conventions hold them."""
+
+    def _ledger_row(self):
+        svc = FakeMemoryService()
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Ledger(tmp, "run-x")
+            c = client(svc, ledger=ledger)
+            c.create(
+                [
+                    conv("conv-a-py-one", "connection pooling rules", "a.py"),
+                    conv("conv-a-py-two", "connection ownership rules", "a.py"),
+                ]
+            )
+            c.search(
+                "connection pooling",
+                filter=scoped_filter(NS, modules=["a.py"]),
+                limit=2,
+                tags=Tags("memory", "pr-1", 1, "retrieve"),
+            )
+            return [r for r in ledger.records() if r.memory_op == "search"][0]
+
+    def test_the_ids_are_recorded_not_just_the_count(self):
+        row = self._ledger_row()
+        self.assertEqual(row.memories_returned, 2)
+        self.assertEqual(sorted(row.retrieved_ids), ["conv-a-py-one", "conv-a-py-two"])
+
+    def test_the_ids_survive_a_ledger_round_trip(self):
+        # They ride in a JSONL row, so a list field has to reload as a list.
+        row = self._ledger_row()
+        reloaded = type(row).from_json(row.to_json())
+        self.assertEqual(reloaded.retrieved_ids, row.retrieved_ids)
+
+
+class TestOrdinalAttributeRoundTrip(unittest.TestCase):
+    """Attributes are stored as strings, so a read-modify-write on one needs an
+    explicit decode. Re-encoding the string form is a silent no-op, which is
+    what makes a missing decode hard to notice -- dedupe-on-write reads back
+    pr_ordinal and occurrences on every repeat finding."""
+
+    def test_an_ordinal_survives_the_round_trip_as_an_int(self):
+        self.assertEqual(decode_ordinal_attr(ordinal_attr(4)), 4)
+        self.assertEqual(decode_ordinal_attr(ordinal_attr(19)), 19)
+
+    def test_zero_padding_does_not_leak_into_arithmetic(self):
+        # "001" + 1 is a TypeError; int("001") + 1 is 2.
+        self.assertEqual(decode_ordinal_attr("001", 1) + 1, 2)
+
+    def test_a_missing_or_unparseable_value_falls_back(self):
+        self.assertEqual(decode_ordinal_attr(None, 7), 7)
+        self.assertEqual(decode_ordinal_attr("", 7), 7)
+        self.assertEqual(decode_ordinal_attr("not-a-number", 7), 7)
+
+    def test_padded_ordinals_still_sort_correctly_as_strings(self):
+        # The reason for the padding: plain str() sorts "10" before "9".
+        self.assertEqual(sorted([ordinal_attr(9), ordinal_attr(10)]),
+                         [ordinal_attr(9), ordinal_attr(10)])
+        self.assertLess(ordinal_attr(9), ordinal_attr(10))
+
+
+class TestPhantomWrite(unittest.TestCase):
+    """A bulk create can report an id it never stored.
+
+    Verified live 2026-08-25 while priming run-2: 120 ids returned in
+    `created`, `errors` empty, 119 in the store. The missing record was still
+    absent minutes later, and that exact id wrote and read back instantly in a
+    probe namespace -- so this is a dropped write, not the eventual consistency
+    `wait_for_visibility` was built for. Waiting longer cannot fix it; only
+    creating it again can. Without that, a run dies *after* paying for the
+    primer, which is the most expensive thing the memory agent does.
+    """
+
+    def _records(self):
+        return [
+            conv("conv-a-py-one", "first fact", "a.py"),
+            conv("conv-a-py-two", "second fact", "a.py"),
+        ]
+
+    def test_a_dropped_write_is_recreated_and_the_wait_succeeds(self):
+        svc = FakeMemoryService(phantom_ids={"conv-a-py-two"})
+        c = client(svc)
+        records = self._records()
+        created = c.create(records)
+        self.assertEqual(len(created), 2)  # the service claimed both
+        self.assertNotIn("conv-a-py-two", svc.records)  # but stored one
+        c.wait_for_visibility(created, timeout=2.0, interval=0.01, records=records)
+        self.assertIn("conv-a-py-two", svc.records)
+
+    def test_without_the_records_it_cannot_repair_and_still_raises(self):
+        # Ids alone are not enough to re-create; this is why the parameter
+        # takes records rather than trusting the store to have kept them.
+        svc = FakeMemoryService(phantom_ids={"conv-a-py-two"}, phantom_forever=True)
+        c = client(svc)
+        created = c.create(self._records())
+        with self.assertRaises(NotVisible):
+            c.wait_for_visibility(created, timeout=0.2, interval=0.01)
+
+    def test_a_permanently_dropped_record_still_fails_loudly(self):
+        """The retry must not turn an un-storable record into a silent pass --
+        a missing memory is lost recall for every later PR."""
+        svc = FakeMemoryService(phantom_ids={"conv-a-py-two"}, phantom_forever=True)
+        c = client(svc)
+        records = self._records()
+        created = c.create(records)
+        with self.assertRaises(NotVisible) as ctx:
+            c.wait_for_visibility(created, timeout=0.2, interval=0.01, records=records)
+        self.assertIn("conv-a-py-two", str(ctx.exception))
+
+    def test_the_repair_is_logged_and_costs_nothing(self):
+        svc = FakeMemoryService(phantom_ids={"conv-a-py-two"})
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Ledger(tmp, "run-p")
+            c = client(svc, ledger=ledger)
+            records = self._records()
+            created = c.create(records, Tags("memory", "prime", 0, "prime"))
+            c.wait_for_visibility(
+                created,
+                timeout=2.0,
+                interval=0.01,
+                records=records,
+                tags=Tags("memory", "prime", 0, "prime"),
+            )
+            waits = [r for r in ledger.records() if r.memory_op == "wait"]
+            self.assertEqual(waits[-1].notes["recreated"], ["conv-a-py-two"])
+            self.assertFalse(any(r.billable for r in ledger.records()))
+
+    def test_a_healthy_write_is_not_recreated(self):
+        svc = FakeMemoryService()
+        c = client(svc)
+        records = self._records()
+        created = c.create(records)
+        creates_before = len([x for x in svc.calls if x[1] == "long-term-memory"])
+        c.wait_for_visibility(created, timeout=2.0, interval=0.01, records=records)
+        creates_after = len([x for x in svc.calls if x[1] == "long-term-memory"])
+        self.assertEqual(creates_before, creates_after)

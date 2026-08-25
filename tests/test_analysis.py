@@ -4,14 +4,17 @@ import unittest
 
 from dataclasses import replace
 
-from reviewbot.accounting import MEMORY_OP, MODEL_CALL, CallRecord, Usage
+from reviewbot.accounting import ABANDONED, MEMORY_OP, MODEL_CALL, CallRecord, Usage
 from reviewbot.analysis import (
+    abandoned_cost,
     breakeven_ordinal,
     cache_integrity,
     cumulative,
     per_pr,
     primer_amortization,
+    marginal_per_pr,
     production_equivalent_usd,
+    retrieval_mix,
     summary,
 )
 
@@ -271,3 +274,211 @@ class TestCacheExpiryIsNotAPrefixBug(unittest.TestCase):
         """A 15-minute gap is expiry at 5m and a real defect at 1h."""
         calls = [replace(r, cache_ttl="1h") for r in self._two_calls(900)]
         self.assertIn("varying between calls", " ".join(cache_integrity(calls)))
+
+
+class TestRetrievalMix(unittest.TestCase):
+    """Which records filled the window, not just how many.
+
+    This is the measurement the compaction question hinges on: the store only
+    grows, the window is fixed, so are the accumulating episodic findings
+    winning slots or are the primed conventions holding them? A count cannot
+    say. The id prefix can.
+    """
+
+    def _search(self, ordinal, ids, limit=4):
+        return rec(
+            "memory",
+            ordinal,
+            phase="retrieve",
+            kind=MEMORY_OP,
+            memory_op="search",
+            memories_returned=len(ids),
+            search_limit=limit,
+            retrieved_ids=ids,
+        )
+
+    def test_records_are_attributed_to_their_memory_type(self):
+        mix = retrieval_mix(
+            [self._search(1, ["conv-a-one", "conv-a-two", "find-a-x-1"])]
+        )
+        self.assertEqual(
+            mix["per_pr"]["1"]["by_type"],
+            {"repo_convention": 2, "review_finding": 1},
+        )
+        self.assertEqual(mix["totals"], {"repo_convention": 2, "review_finding": 1})
+
+    def test_a_split_budget_sums_its_searches_into_one_pr_row(self):
+        mix = retrieval_mix(
+            [
+                self._search(1, ["conv-a-one", "conv-a-two"], limit=2),
+                self._search(1, ["find-a-x-1"], limit=2),
+            ]
+        )
+        self.assertEqual(mix["per_pr"]["1"]["total"], 3)
+        self.assertEqual(
+            mix["per_pr"]["1"]["by_type"],
+            {"repo_convention": 2, "review_finding": 1},
+        )
+
+    def test_a_full_window_is_flagged_as_saturated(self):
+        """A window that comes back full is reporting the limit, not relevance:
+        whatever ranked one past the limit is invisible, and the response
+        carries no score to say whether the last slot was worth having."""
+        mix = retrieval_mix(
+            [
+                self._search(1, ["conv-a-one", "conv-a-two"], limit=2),
+                self._search(2, ["conv-a-one"], limit=2),
+            ]
+        )
+        self.assertEqual(mix["saturated_prs"], [1])
+
+    def test_a_foreign_id_is_counted_as_unknown_not_silently_typed(self):
+        mix = retrieval_mix([self._search(1, ["conv-a-one", "somebody-elses"])])
+        self.assertEqual(mix["per_pr"]["1"]["unknown"], 1)
+        self.assertEqual(mix["per_pr"]["1"]["by_type"], {"repo_convention": 1})
+
+    def test_a_run_that_predates_id_logging_reports_uninstrumented(self):
+        """Not an empty mix -- that reads as 'retrieval returned nothing', which
+        is the opposite of what run-1's saturated window actually did."""
+        old = replace(
+            self._search(1, ["conv-a-one"]), retrieved_ids=None, memories_returned=20
+        )
+        mix = retrieval_mix([old])
+        self.assertFalse(mix["instrumented"])
+        self.assertEqual(mix["per_pr"], {})
+
+    def test_creates_and_waits_are_not_counted_as_retrieval(self):
+        # Every memory op reports a count; only a search reports a window.
+        written = rec(
+            "memory",
+            1,
+            phase="write",
+            kind=MEMORY_OP,
+            memory_op="create",
+            memories_returned=5,
+            retrieved_ids=["find-a-x-1"],
+        )
+        mix = retrieval_mix([written, self._search(1, ["conv-a-one"])])
+        self.assertEqual(mix["totals"], {"repo_convention": 1})
+
+
+class TestMarginalPerPr(unittest.TestCase):
+    """The headline figure, and why it is not the cumulative percentage.
+
+    A cumulative saving is a function of sequence length, because the one-time
+    primer is amortised over it -- "21% over 19 PRs" is a per-review saving, a
+    setup cost and an arbitrary N glued together. Only the first is a property
+    of the technique, so that is what gets reported.
+    """
+
+    def _run(self, prs, primer_usd=1.0):
+        """prs: [(baseline_out, memory_out)] -- output tokens drive the cost."""
+        recs = [rec("memory", 0, phase="prime", out=int(primer_usd / 25e-6))]
+        for i, (b, m) in enumerate(prs, 1):
+            recs.append(rec("baseline", i, out=b))
+            recs.append(rec("memory", i, out=m))
+        return recs
+
+    def test_the_primer_is_excluded_from_the_per_review_figure(self):
+        # Two PRs, memory half the cost of baseline on each. The per-review
+        # saving is 50% regardless of how big the primer is.
+        for primer in (0.5, 5.0, 50.0):
+            m = marginal_per_pr(self._run([(1000, 500), (1000, 500)], primer))
+            self.assertAlmostEqual(m["aggregate_pct"], 50.0, places=6)
+
+    def test_the_primer_is_reported_in_reviews_not_dollars_alone(self):
+        m = marginal_per_pr(self._run([(1000, 500)] * 4, primer_usd=1.0))
+        # $1.00 primer against $0.0125 saved per PR (500 tok x $25/MTok).
+        self.assertAlmostEqual(m["mean_saving_usd"], 500 * 25e-6, places=9)
+        self.assertAlmostEqual(m["primer_payback_prs"], 1.0 / (500 * 25e-6), places=3)
+
+    def test_aggregate_is_size_weighted_and_the_mean_is_not(self):
+        """The distinction that decides which number is quotable.
+
+        One huge PR where memory saves nothing, one tiny PR where it saves
+        everything: the unweighted mean says +50%, the size-weighted aggregate
+        says the truth about the bill.
+        """
+        m = marginal_per_pr(self._run([(10_000, 10_000), (100, 0)]))
+        self.assertAlmostEqual(m["mean_pct"], 50.0, places=6)
+        self.assertAlmostEqual(m["aggregate_pct"], 100 * 100 / 10_100, places=6)
+        self.assertLess(m["aggregate_pct"], m["mean_pct"])
+
+    def test_the_worst_pr_is_surfaced_not_averaged_away(self):
+        # A PR where memory costs MORE is the case a skeptic needs to see.
+        m = marginal_per_pr(self._run([(1000, 500), (1000, 2000)]))
+        self.assertEqual(m["worst_pr"]["pr_ordinal"], 2)
+        self.assertLess(m["worst_pr"]["saving_pct"], 0)
+        self.assertEqual(m["best_pr"]["pr_ordinal"], 1)
+
+    def test_a_half_measured_pr_is_skipped_not_counted_as_a_win(self):
+        """One agent missing means the PR is not comparable. Counting it would
+        credit memory with a baseline cost of zero."""
+        recs = self._run([(1000, 500)])
+        recs.append(rec("memory", 2, out=500))  # no baseline row for PR 2
+        m = marginal_per_pr(recs)
+        self.assertEqual(m["n_prs"], 1)
+        self.assertEqual([r["pr_ordinal"] for r in m["per_pr"]], [1])
+
+    def test_both_regimes_are_available(self):
+        recs = self._run([(1000, 500)] * 3)
+        a = marginal_per_pr(recs, regime="as_measured")
+        b = marginal_per_pr(recs, regime="production_equivalent")
+        self.assertEqual(a["regime"], "as_measured")
+        self.assertEqual(b["regime"], "production_equivalent")
+
+    def test_an_empty_run_does_not_divide_by_zero(self):
+        m = marginal_per_pr([])
+        self.assertEqual(m["n_prs"], 0)
+        self.assertEqual(m["per_pr"], [])
+
+    def test_it_appears_in_the_summary_under_both_regimes(self):
+        out = summary(self._run([(1000, 500)] * 3))
+        self.assertIn("marginal", out)
+        self.assertEqual(set(out["marginal"]), {"as_measured", "production_equivalent"})
+        self.assertGreater(out["marginal"]["as_measured"]["aggregate_pct"], 0)
+
+
+class TestPrimerExcludesAbandoned(unittest.TestCase):
+    """Two primer costs in one report is worse than either being wrong.
+
+    Run-2's first primer attempt died after paying for its model calls (the
+    store reported creating a record it never stored). `per_pr` excluded those
+    rows, `primer_amortization` did not, and the report printed $4.67 for the
+    primer next to $2.39 for the same primer.
+    """
+
+    def _with_abandoned(self):
+        first = rec("memory", 0, phase="prime", out=40_000)   # the dead attempt
+        second = rec("memory", 0, phase="prime", out=20_000)  # the real one
+        marker = CallRecord(
+            run_id="r", agent="harness", pr_id="-", pr_ordinal=0, phase="-",
+            kind=ABANDONED, seq=999,
+            notes={"superseded_seqs": [first.seq], "reason": "primer aborted"},
+        )
+        reviews = [rec("memory", 1, out=1000), rec("baseline", 1, out=1000)]
+        return [first, second, marker, *reviews], first, second
+
+    def test_a_superseded_primer_attempt_is_not_added_to_the_real_one(self):
+        recs, first, second = self._with_abandoned()
+        primer = primer_amortization(recs)
+        self.assertEqual(primer["primer_calls"], 1)
+        self.assertAlmostEqual(primer["primer_usd"], second.billed_usd(), places=9)
+
+    def test_the_report_agrees_with_itself(self):
+        """The invariant that actually matters: the primer figure in `primer`
+        and the one in `marginal` must be the same number."""
+        recs, _, _ = self._with_abandoned()
+        out = summary(recs)
+        self.assertAlmostEqual(
+            out["primer"]["primer_usd"],
+            out["marginal"]["as_measured"]["primer_usd"],
+            places=9,
+        )
+
+    def test_the_abandoned_spend_is_still_reported_somewhere(self):
+        # Excluded from the primer, not erased -- the money was really spent.
+        recs, first, _ = self._with_abandoned()
+        self.assertAlmostEqual(
+            abandoned_cost(recs)["billed_usd"], first.billed_usd(), places=9
+        )

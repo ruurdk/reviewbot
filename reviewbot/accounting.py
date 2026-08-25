@@ -159,6 +159,13 @@ class CallRecord:
     injected_tokens: int | None = None
     search_limit: int | None = None
     similarity_threshold: float | None = None
+    # Which records came back, not just how many. A count alone cannot answer
+    # the question that decides whether compaction is worth building: as the
+    # store grows against a fixed retrieval window, are the accumulating
+    # episodic findings winning slots or are the primed conventions holding
+    # them? `retrieval_mix()` in analysis.py reads this; run-1 predates it and
+    # its search rows have `retrieved_ids: null`, which is how to spot them.
+    retrieved_ids: list[str] | None = None
 
     notes: dict[str, Any] = field(default_factory=dict)
 

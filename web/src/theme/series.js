@@ -20,6 +20,32 @@ export const SERIES = {
   dark: { baseline: "#D90B78", memory: "#0070f3" },
 };
 
+// Comparing two RUNS of the treatment against no-memory needs a second
+// distinction, and it deliberately is not a second hue.
+//
+// Every single-hue pair was measured and every one FAILS the dark-mode
+// lightness band (primary200+primary600 ΔE 27.8 but L 0.719/0.437 outside
+// 0.48-0.67; primary300/400 + primary600 likewise). The only pair that passes
+// both modes is discovery400+primary400 -- the pair already spent on
+// baseline-vs-memory. Redis's remaining ramps are status families (success,
+// danger, attention, notice, informative), which are reserved.
+//
+// So reusing discovery400 here would make magenta mean "baseline" on one chart
+// and "run 1" on another, in the same page. Instead both runs keep the *memory*
+// hue -- they are the same treatment under different configs, which is what the
+// shared colour says -- and are separated by dash pattern plus a direct label.
+// primary400 alone passes every check in both modes (validated, not assumed),
+// and identity is never carried by colour alone here because each line is
+// labelled at its end.
+export const RUN_STROKE = {
+  light: "#0070f3",
+  dark: "#0070f3",
+};
+
+// Solid for the most recent run, dashed for earlier ones: the reader's eye goes
+// to the solid line, which is the current result.
+export const RUN_DASH = ["6 4", "0"];
+
 // prime -> retrieve -> review -> write is an *ordered* pipeline, so the stack
 // takes a single-hue ordinal ramp rather than four categorical hues. That is the
 // correct form and it sidesteps the status-name collision: a danger-red "write"

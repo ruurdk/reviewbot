@@ -255,7 +255,7 @@ Two fallbacks, documented in case the decision is revisited:
 
 ### 7b. Retrieval cost is a measured quantity, not an assumption
 
-Log, per review: number of memories retrieved, their total token count as injected into the prompt, the `limit` and `similarityThreshold` used, and how many retrieved memories the model actually referenced in its output. The last one is the retrieval-precision signal — retrieving 40 memories to use 3 is the failure mode that silently eats the savings (§9).
+Log, per review: **which** memories were retrieved (their ids, not merely a count), their total token count as injected into the prompt, the `limit` and `similarityThreshold` used, and how many retrieved memories the model actually referenced in its output. The last one is the retrieval-precision signal — retrieving 40 memories to use 3 is the failure mode that silently eats the savings (§9). The ids matter for a reason only visible once the store grows: a count cannot say whether a saturated window is filling with semantic conventions or episodic findings, which is the measurement §7f turns out to need.
 
 ### 7c. Quality labeling (resolved: hybrid)
 
@@ -311,6 +311,55 @@ Three consequences, all worth stating plainly rather than tidying away:
 1. **The mitigations above are correct but inert here.** Running memory first still aims the bias against the thesis; there is simply no bias to aim.
 2. **The as-measured and production-equivalent series converge**, because §7d repricing only bites on cross-PR cache *reads* and there are none. That removes the single biggest objection to a compressed replay — the baseline is not getting unrealistic cache hits, because nothing is getting cache hits.
 3. **It is direct evidence for the argument in §3.** The claim there is that prompt caching cannot substitute for memory because real PR cadence exceeds the maximum TTL. The stronger version, measured: caching does not survive even a *back-to-back* replay of two reviews of the same PR. The 1-hour TTL would cover this gap, at a 2x write premium — but a run that has to buy the long TTL to keep a prefix warm between two consecutive calls is not evidence that caching solves the per-PR cost problem.
+
+### 7f. The retrieval window is fixed while the store grows — measured, and why compaction is not the fix yet
+
+Sequential PRs mean the store only ever gets bigger. Nothing in the harness merges, supersedes, or expires a memory: every write is an append with a fresh deterministic id. Measured over the 19-PR sequence:
+
+| | records |
+|---|---|
+| after the primer | 102 `repo_convention` |
+| after 19 PRs | 198 (96 `review_finding` appended, 0 merged, 0 superseded) |
+
+The obvious worry is that per-PR retrieval cost therefore grows with sequence position, eating the saving that §7d and §7e work so hard to price honestly. **It does not, and the reason matters more than the reassurance.** Retrieval ran with `limit: 20` and returned *exactly* 20 records on every PR from the first one onward. Injected memory tokens are consequently flat at ~3,705 per PR — **70,397 tokens across the sequence, 3.7% of the memory agent's total input.** Store growth is absorbed by truncation, not by the bill.
+
+So the cost case for compacting memories is absent: there is nothing to save on a line item that is both 3.7% and constant by construction. The *retrieval* case is the opposite, and it is the one worth stating:
+
+- **A saturated window measures the limit, not relevance.** Whatever ranked 21st is invisible, and the managed API returns **no relevance score** (§4d) and offers no recency weighting — so we cannot even ask whether slot 20 was worth having.
+- **Competition for those slots roughly doubled** across the sequence (102 → 198 candidate records) while the window stayed at 20.
+- **Retrieval precision is 19%** — 74 of 380 retrieved memories were ever cited, per-PR between 0.05 and 0.35, with no upward trend. The accumulating records are not earning their slots. This is precisely the failure mode §7b names: retrieving many to use few.
+
+**The one measurement the first run could not make.** `log_op` recorded `returned: <count>` and not *which* records came back, so the question that decides whether compaction is worth building — are the 102 primed conventions crowding out the 96 episodic findings? — was unanswerable from the ledger. Conventions are semantically closer to the retrieval query (`"{title}. Files changed: {modules}"`), which makes crowding-out plausible but unproven. The harness now logs retrieved ids and `analysis.retrieval_mix()` attributes each window by memory type; run-1's rows predate this and report `instrumented: false` rather than an empty mix, because an empty mix would read as "retrieval returned nothing", which is the opposite of what happened.
+
+**Where compaction does belong, in two distinct roles.** They are worth separating because only one of them is about tokens:
+
+1. **Dedup-on-write — built, behind `--dedupe-writes`. A correctness fix, not an efficiency one.** An append-only store is what turns a wrong belief into a growing one. The clearest instance in run-1: a false claim that redis-py's PEP 604 unions need `from __future__ import annotations` (untrue — `requires-python = ">=3.10"`) appeared **11 times across 9 PRs** for the memory agent versus **3 across 3** for the baseline. The loop is mechanical: the claim sits in the retrieval window → the model restates it → the write phase persists it again under a new id → it now has more copies competing for the window. Merging into the existing record via the guarded `PATCH .../fields` breaks the loop, and costs one non-billable GET per finding. The implementation makes the finding id a pure function of (module, topic) rather than (module, topic, ordinal), which is what turns the id itself into the dedup key — no similarity search and no fuzzy matching. It records `occurrences` and `last_pr_ordinal` while leaving `pr_ordinal` at its first-seen value, so recurrence becomes an explicit, measurable attribute instead of an implicit copy count — and that count is the raw material `review_policy` needs. **What it does not do is make a false claim less likely to be restated**; it only stops the copies accumulating. Suppressing a refuted claim is `review_policy`'s job, still unbuilt. This is the same gap `review_policy` (§4d) and memory invalidation (§6) address from the other side.
+2. **Consolidation, later — a slot-density play that must be measured.** Distilling N findings on a module into one raises information per slot, which is the actual scarce resource once the window saturates. Chronology already rides in `attributes.pr_ordinal` (§4d), so "the last N findings on this module" is expressible today. But a distillation pass spends **output** tokens, and output is the expensive half of the bill (§7g) — so it has to be measured against the saving, not assumed. At 198 records it will not pay for itself; at a few hundred PRs it should.
+
+**Cheapest experiment, and it needs no compaction at all:** split the single pooled search into one search per memory type, each with its own budget (`--retrieval-split conv=10,find=10`), so a growing pile of findings cannot squeeze conventions out or vice versa. Two round trips, zero model tokens — searches are `billable=False`, so the knob changes the retrieval mix without touching the cost comparison. Pooled remains the default so run-1 stays reproducible.
+
+### 7g. Halving the input does not halve the bill — the output side, decomposed
+
+Measured on run-1, and worth stating before anyone quotes a headline: the memory agent used **51% less context** and cost **21% less**. Both numbers are right, and the gap between them is arithmetic, not an accounting error.
+
+| | context (input) | output | input $ | output $ | total |
+|---|---|---|---|---|---|
+| baseline | 3,890,269 | 535,048 | $19.29 (59%) | $13.38 (41%) | **$32.67** |
+| memory | 1,890,035 | 661,822 | $9.21 (36%) | $16.55 (64%) | **$25.76** |
+| delta | −51% | **+24%** | −$10.08 | **+$3.17** | −$6.91 (21%) |
+
+Two multiplications get from 51% to 21%:
+
+1. **The 51% applies to only 59% of the bill.** Output is priced 5x input ($25 vs $5 per MTok). 0.51 × 0.59 = 30% — the ceiling *before* anything else happens.
+2. **The memory agent then gives $3.17 back on output**, taking 30% → 21%.
+
+Serialized findings account for only ~13.2k and ~16.8k of those output totals, so **~97% of output is thinking tokens**: the memory agent is not writing longer reviews, it is reasoning more per review (median 27,600 vs 25,564). The plausible mechanism is the same one §7f describes — retrieved memories hand the model more leads to chase, and at 9% gold precision a large share of those leads are false. Memory bought its input saving partly by spending output on false hypotheses.
+
+Three consequences for how this is reported and where optimization effort goes:
+
+- **Report both series, as §7a already requires.** "51% less context" and "21% cheaper" are answers to different questions; quoting the first alone invites exactly the objection a skeptical audience should raise.
+- **Effort is the dominant cost knob in the whole experiment**, not retrieval. Because memory's cost is output-weighted, cutting output cuts *more* from memory: halving both agents' output takes the net saving from 21% to ~33%. Sweeping effort down (§4f) is therefore both a cost and a sensitivity experiment, and it stays confound-free as long as the rung is identical for both agents.
+- **The design's absolute ceiling is 59%** — memory input at literally zero, output at parity. Any promise above that is a promise the price ratio cannot keep.
 
 ## 8. Demo narrative (what the viewer sees)
 

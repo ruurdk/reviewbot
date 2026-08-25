@@ -28,6 +28,37 @@ export const REGIMES = {
   },
 };
 
+/**
+ * Load every published run, plus a manifest describing what differs between
+ * them. Falls back to the single-run path (and then to the synthetic fixture),
+ * so a checkout with one run still renders.
+ */
+export async function loadRuns(url = "runs.json") {
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(String(res.status));
+    const manifest = await res.json();
+    const runs = await Promise.all(
+      (manifest.runs ?? []).map(async (entry) => ({
+        ...entry,
+        report: { ...(await (await fetch(entry.url, { cache: "no-store" })).json()), synthetic: false },
+      })),
+    );
+    if (!runs.length) throw new Error("empty manifest");
+    return runs;
+  } catch {
+    const report = await loadReport();
+    return [
+      {
+        id: report.run_id ?? "run",
+        label: report.synthetic ? "Synthetic run" : `Run ${report.run_id}`,
+        note: "",
+        report,
+      },
+    ];
+  }
+}
+
 export async function loadReport(url = "report.json") {
   try {
     const res = await fetch(url, { cache: "no-store" });
@@ -76,4 +107,43 @@ export function crossover(series) {
 export function netSaving(series) {
   const last = series[series.length - 1];
   return last ? last.baseline - last.memory : 0;
+}
+
+/**
+ * The marginal per-review saving, primer excluded -- the headline figure.
+ *
+ * Why this leads and the cumulative percentage does not: a cumulative saving is
+ * a function of how many PRs happen to be in the sequence, because the one-time
+ * primer is amortised over them. "21% over 19 PRs" is three numbers glued
+ * together -- a per-review saving, a setup cost, and an arbitrary N -- and only
+ * the first is a property of the technique. So the page leads with the
+ * per-review number and reports the primer as what it is: a setup cost priced
+ * in reviews.
+ *
+ * Computed by the harness (analysis.marginal_per_pr), never here.
+ */
+export function marginalFor(report, regime = "as_measured") {
+  return report?.accounting?.marginal?.[regime] ?? null;
+}
+
+/**
+ * Cumulative saving versus no memory, per PR: [{ordinal, saving}].
+ *
+ * This is the form that lets two runs share one chart. Absolute cost cannot:
+ * each run contains its *own* baseline, and those baselines are not identical
+ * even though they read byte-identical context (3,890,269 tokens in both) --
+ * model output is non-deterministic, so run-1's control billed $32.67 and
+ * run-2's $33.54. Plotting one run's memory line against the other run's
+ * baseline would be comparing across controls, and picking one baseline to
+ * stand for both would quietly discard the other.
+ *
+ * Differencing each run against its own control sidesteps that entirely, and
+ * zero becomes the no-memory line: above it memory is ahead, below it memory is
+ * behind, and the crossing is the break-even PR.
+ */
+export function savingSeries(report, regime = "as_measured") {
+  return cumulativeSeries(report, regime).map((d) => ({
+    ordinal: d.ordinal,
+    saving: d.baseline - d.memory,
+  }));
 }

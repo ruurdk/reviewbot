@@ -17,7 +17,7 @@ from .dataset import BEATS, Sequence, disclosure_table, rows, summary as dataset
 from .env import DEFAULT_ENV_FILE, REQUIRED_BY, is_placeholder, load_env, missing
 from .github import GitHubClient, PRStore
 from . import preflight
-from .memory import AgentMemoryClient
+from .memory import AgentMemoryClient, parse_retrieval_split
 from .quality import load_gold_dir
 from .repo import GitHubSourceProvider, LocalSourceProvider, read_docs
 from .runner import SequenceRunner, render_report, save_report
@@ -111,6 +111,19 @@ def cmd_report(args: argparse.Namespace) -> int:
     out = analysis.summary(records)
     Path(args.run, "summary.json").write_text(json.dumps(out, indent=2) + "\n")
 
+    # Refresh report.json's accounting block from the same ledger. Without this,
+    # changing anything in analysis.py leaves the file the replay page actually
+    # loads showing the *old* numbers, with nothing to indicate it -- and the
+    # page is the deliverable. Only `accounting` is touched; the per-PR review
+    # detail in the rest of the file comes from the run itself and cannot be
+    # re-derived here.
+    report_path = Path(args.run, "report.json")
+    if report_path.exists():
+        report = json.loads(report_path.read_text())
+        report["accounting"] = out
+        report_path.write_text(json.dumps(report, indent=2) + "\n")
+        print(f"refreshed {report_path} accounting block")
+
     print(f"run: {args.run}   {len(records)} ledger rows")
     manifest = Ledger(args.run, "").read_manifest()
     if manifest.get("config_fingerprint"):
@@ -125,6 +138,26 @@ def cmd_report(args: argparse.Namespace) -> int:
             f"{a['billed_usd_production']:>14.4f}{a['memory_overhead_usd']:>12.4f}"
         )
     print()
+    marginal = (out.get("marginal") or {}).get("as_measured") or {}
+    if marginal.get("n_prs"):
+        print(
+            f"marginal saving per review (primer excluded): "
+            f"{marginal['aggregate_pct']:+.1f}% "
+            f"(${marginal['mean_saving_usd']:.3f}/PR, size-weighted; "
+            f"median PR {marginal['median_pct']:+.1f}%)"
+        )
+        payback = marginal.get("primer_payback_prs")
+        if payback:
+            print(
+                f"one-time primer ${marginal['primer_usd']:.2f} "
+                f"= {payback:.1f} reviews to pay back"
+            )
+        worst = marginal["worst_pr"]
+        print(
+            f"worst PR: {worst['pr_id']} at {worst['saving_pct']:+.1f}% "
+            "-- a mean would hide it"
+        )
+        print()
     primer = out["primer"]
     if primer["primer_calls"]:
         per_pr = primer["primer_usd_per_pr"]
@@ -211,8 +244,14 @@ def cmd_run(args: argparse.Namespace) -> int:
             ),
             conventions=conventions,
             retrieval_limit=args.retrieval_limit,
+            retrieval_limits=(
+                parse_retrieval_split(args.retrieval_split)
+                if getattr(args, "retrieval_split", None)
+                else None
+            ),
             similarity_threshold=args.similarity_threshold,
             distill_writes=not args.no_distill,
+            dedupe_writes=args.dedupe_writes,
         )
 
     runner = SequenceRunner(
@@ -451,8 +490,25 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--cache-ttl", default=defaults.cache_ttl, choices=["5m", "1h"])
     run.add_argument("--no-cache", action="store_true", help="disable prompt caching on BOTH agents")
     run.add_argument("--retrieval-limit", type=int, default=20)
+    run.add_argument(
+        "--retrieval-split",
+        default=None,
+        metavar="conv=10,find=10",
+        help="per-memory-type retrieval budgets instead of one pooled "
+        "--retrieval-limit. Pooled saturated on every PR of run-1, so "
+        "conventions and findings compete for fixed slots; splitting makes "
+        "them independent. Costs one extra (non-billable) search per PR.",
+    )
     run.add_argument("--similarity-threshold", type=float, default=None)
     run.add_argument("--no-distill", action="store_true", help="write findings verbatim (zero write tokens)")
+    run.add_argument(
+        "--dedupe-writes",
+        action="store_true",
+        help="merge a repeat finding into its existing record instead of "
+        "appending a copy. Run-1 restated one false convention 11 times across "
+        "9 PRs, each copy competing for the same fixed retrieval window. Costs "
+        "one non-billable GET per finding; off by default so run-1 reproduces.",
+    )
     run.add_argument("--force", action="store_true", help="run even if the dataset does not validate")
     run.set_defaults(func=cmd_run)
 

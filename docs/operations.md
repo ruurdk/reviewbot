@@ -39,7 +39,7 @@ sequence.
 ## Setup and a full run, in dependency order
 
 ```bash
-python3 -m unittest discover -s tests -t .     # 195 tests, no network, no keys
+python3 -m unittest discover -s tests -t .     # 255 tests, no network, no keys
 
 python3 -m reviewbot memcheck                  # is the memory store usable?
 python3 -m reviewbot dataset validate          # is the frozen sequence complete?
@@ -52,6 +52,14 @@ python3 tools/inspect_namespace.py <namespace>         # is every memory retriev
 cp runs/my-run-1/report.json web/public/               # page renders the real run
 python3 tools/make_page_fixture.py runs/my-run-1       # its smoke test checks that shape
 ```
+
+When it finishes, freeze it: `cp -r runs/my-run-1 runs/frozen/my-run-1`, then
+`python3 -m reviewbot report runs/frozen/my-run-1` so the frozen `summary.json`
+and the `accounting` block of its `report.json` are the ones current code
+produces. Nothing in the harness writes `runs/frozen/` — it is a convention, and
+the point of it is that `runs/<id>/` is a working directory a resume can still
+append to, while the frozen copy is what a number in the README refers to.
+`runs/frozen/run-1` and `runs/frozen/run-2` are both there.
 
 `run --checkout` reads source at the pinned SHA via `git show <sha>:<path>`, so
 only PR *metadata* needs a GitHub token, not file contents. A dirty working tree
@@ -69,6 +77,57 @@ in that clone therefore cannot silently change the frozen dataset.
 | `dataset` | `validate` / `table` / `summary` for the frozen sequence |
 | `run` | execute the sequence for both agents |
 | `report` | aggregate a ledger into the headline numbers + `summary.json` |
+
+### `run` flags that change what is being measured
+
+Everything below is an experimental variable, not a preference. Both agents always
+get the identical model config — `assert_comparable()` raises `ConfoundError`
+otherwise — so these knobs are the legitimate ones.
+
+| Flag | Effect |
+|---|---|
+| `--effort low\|medium\|high\|xhigh\|max` | The **dominant cost knob**. ~97% of output is thinking tokens, and output is priced 5x input, so it is 41-64% of the bill (spec §7g). Must be identical for both agents; a sweep is a separate run each. |
+| `--retrieval-limit N` | Pooled retrieval budget across both memory types. Run-1 used 20 and saturated it on **every** PR, so the window was reporting the limit rather than relevance (spec §7f). |
+| `--retrieval-split conv=10,find=10` | One search per memory type with its own budget instead of one pooled search, so a growing pile of findings cannot squeeze conventions out. Costs one extra round trip and **zero model tokens** (searches are `billable=False`), so it moves the retrieval mix without touching the cost comparison. Pooled stays the default so run-1 remains reproducible. |
+| `--dedupe-writes` | Merge a repeat finding into its existing record instead of appending a copy, and record `occurrences` / `last_pr_ordinal` on it. Changes the finding **id scheme** (drops the ordinal), so a run with it on and one with it off produce stores that cannot be compared record-for-record — which is why the manifest records it. Costs one non-billable GET per finding. Off by default so run-1 reproduces. |
+| `--no-distill` | Write findings verbatim instead of distilling them — a zero-model-token write phase. Distillation cost $1.01 of run-1's $25.76, mostly output. |
+| `--cache-ttl 1h` | Do not reach for this to "fix" the zero cache reads. It costs a 2x write premium, reintroduces the free-riding the run order is designed to bias against, and makes the replay *less* like production. The zero-read result is evidence, not a bug (spec §7e). |
+
+After a run with a split budget, `analysis.retrieval_mix()` (in `summary.json`)
+reports what each window actually contained, by memory type. A run whose search
+rows predate id logging reports `instrumented: false` rather than an empty mix.
+
+Both knobs have now been exercised over the full sequence, and what they measured
+is worth knowing before spending another run on them:
+
+| | run-1 (frozen) | run-2 (frozen) |
+|---|---|---|
+| retrieval | pooled, 20 | split, `conv=10,find=10` |
+| writes | append-only | `--dedupe-writes` |
+| saving per review, size-weighted | +27.7% | +31.6% |
+| worst PR (#4131) | −46.8% | +6.8% |
+| break-even | PR 5 | PR 6 |
+| retrieval precision | 19% (74/380) | 25% (80/316) |
+
+- **Split retrieval answered run-1's open question.** Conventions returned their
+  full 10 on all 19 PRs while findings started at 0 and reached their cap only
+  from PR 7 — so in a pooled window it is conventions that crowd, and capping
+  them is the plausible mechanism behind #4131 flipping.
+- **`--dedupe-writes` fired once in 101 writes** (PR #4177, logged as
+  `deduped_writes: 1`). The id keys on `(module, topic)` and `topic` is
+  model-generated free text, which is not a stable key — the same concept on the
+  same file came back as `...python-3-9-compatibi...` and
+  `...python-version-compa...`. Treat the flag as unbuilt until it keys on
+  something stable or does a similarity check before writing.
+- The two runs differ in **two** knobs at once plus generation nondeterminism, so
+  neither difference above is attributed to one knob. The control is what makes
+  that visible: both baselines read byte-identical context (3,890,269 tokens) and
+  still billed differently ($32.67 against $33.54).
+
+The manifest records **both** knobs (`manifest.retrieval` and `manifest.writes`)
+because neither is part of `ModelConfig.fingerprint()`. Without that, two runs
+differing only in retrieval shape or write policy produce byte-identical
+manifests, and the single variable under test leaves no trace in the artifacts.
 
 Tools alongside the CLI:
 
@@ -154,8 +213,9 @@ data/
   gold/               hand-labelled subset (candidate)
   prs/ cache/         ingested PRs and raw API responses (gitignored)
 runs/<id>/            manifest, ledger, checkpoint, report, RESUME.md
+runs/frozen/<id>/     a finished run, kept for reproduction (run-1, run-2)
 docs/                 spec, prompts, operations, provisioning, beat evidence
-tests/                195 tests; hermetic by construction
+tests/                255 tests; hermetic by construction
 ```
 
 Tests use injected transports and never touch the network, so they run with no

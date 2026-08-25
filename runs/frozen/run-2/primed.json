@@ -1,0 +1,2014 @@
+{
+  "namespace": "redis-py-run-2",
+  "frozen_at_sha": "7021617890d46a08e39bfd73caea226573c27958",
+  "modules": [
+    "redis/asyncio/cluster.py",
+    "redis/cluster.py",
+    "redis/commands/core.py",
+    "redis/connection.py"
+  ],
+  "ids": [
+    "conv-redis-asyncio-cluster-py-async-cluster-mirrors-sync-cluster",
+    "conv-redis-asyncio-cluster-py-lazy-initialize-under-lock",
+    "conv-redis-asyncio-cluster-py-initialize-failure-cl-c4733c149a4e",
+    "conv-redis-asyncio-cluster-py-readonly-connect-hook",
+    "conv-redis-asyncio-cluster-py-node-connections-never-retry",
+    "conv-redis-asyncio-cluster-py-explicit-target-nodes-bf6e4bac5d7e",
+    "conv-redis-asyncio-cluster-py-policy-callback-registry",
+    "conv-redis-asyncio-cluster-py-multi-key-commands-single-slot",
+    "conv-redis-asyncio-cluster-py-ft-cursor-follows-ft-aggregate",
+    "conv-redis-asyncio-cluster-py-request-ttl-redirect-loop",
+    "conv-redis-asyncio-cluster-py-maxconnectionserror-is-client-side",
+    "conv-redis-asyncio-cluster-py-connection-error-schedules-reinit",
+    "conv-redis-asyncio-cluster-py-moved-reinitialize-counter",
+    "conv-redis-asyncio-cluster-py-exception-carries-connection",
+    "conv-redis-asyncio-cluster-py-clusternode-owns-its-connections",
+    "conv-redis-asyncio-cluster-py-lazy-reconnect-protocol",
+    "conv-redis-asyncio-cluster-py-nodesmanager-epoch-guard",
+    "conv-redis-asyncio-cluster-py-slot-list-primary-first",
+    "conv-redis-asyncio-cluster-py-pipeline-strategy-delegation",
+    "conv-redis-asyncio-cluster-py-pipeline-command-single-node",
+    "conv-redis-asyncio-cluster-py-transaction-pinned-connection",
+    "conv-redis-cluster-py-module-responsibility",
+    "conv-redis-cluster-py-per-node-retry-disabled",
+    "conv-redis-cluster-py-allowed-connection-kwargs-list",
+    "conv-redis-cluster-py-nodes-manager-locking",
+    "conv-redis-cluster-py-topology-refresh-epoch-guard",
+    "conv-redis-cluster-py-atomic-cache-swap-on-refresh",
+    "conv-redis-cluster-py-slot-list-ordering",
+    "conv-redis-cluster-py-node-identity-by-name",
+    "conv-redis-cluster-py-connection-reuse-across-failures",
+    "conv-redis-cluster-py-execute-command-retry-loop",
+    "conv-redis-cluster-py-per-command-redirect-loop",
+    "conv-redis-cluster-py-moved-vs-ask-handling",
+    "conv-redis-cluster-py-max-connections-not-a-node-failure",
+    "conv-redis-cluster-py-error-connection-attribute-for-metrics",
+    "conv-redis-cluster-py-routing-policy-resolution-order",
+    "conv-redis-cluster-py-slot-determination-special-cases",
+    "conv-redis-cluster-py-result-aggregation-shape",
+    "conv-redis-cluster-py-ft-cursor-node-stickiness",
+    "conv-redis-cluster-py-pipeline-strategy-delegation",
+    "conv-redis-cluster-py-pipeline-shares-parent-topology",
+    "conv-redis-cluster-py-pipeline-write-read-ordering",
+    "conv-redis-cluster-py-pipeline-single-target-per-command",
+    "conv-redis-cluster-py-transaction-single-slot",
+    "conv-redis-cluster-py-transaction-pinned-connection",
+    "conv-redis-cluster-py-on-connect-hook-chaining",
+    "conv-redis-cluster-py-maint-notifications-resp3-only",
+    "conv-redis-cluster-py-cluster-pubsub-node-selection",
+    "conv-redis-commands-core-py-module-responsibility",
+    "conv-redis-commands-core-py-sync-and-async-share-one-body",
+    "conv-redis-commands-core-py-async-alias-vs-async-subclass",
+    "conv-redis-commands-core-py-keys-kwarg-for-routing",
+    "conv-redis-commands-core-py-extra-kwargs-are-parser-options",
+    "conv-redis-commands-core-py-argument-validation-raises-dataerror",
+    "conv-redis-commands-core-py-lazy-imports-from-redis-client",
+    "conv-redis-commands-core-py-never-decode-for-binary-payloads",
+    "conv-redis-commands-core-py-intentionally-unimplemented-commands",
+    "conv-redis-commands-core-py-shutdown-connectionerror-contract",
+    "conv-redis-commands-core-py-expiry-flag-construction-helpers",
+    "conv-redis-commands-core-py-bitfieldoperation-reset-semantics",
+    "conv-redis-commands-core-py-script-sha-and-noscripterror-retry",
+    "conv-redis-commands-core-py-script-encoder-backward-4486340529df",
+    "conv-redis-commands-core-py-streaming-lag-recording-in-xread",
+    "conv-redis-commands-core-py-pubsub-publish-metric-timing",
+    "conv-redis-commands-core-py-watch-and-unwatch-are-no-ops",
+    "conv-redis-commands-core-py-experimental-api-decorators",
+    "conv-redis-commands-core-py-digest-local-optional-xxhash",
+    "conv-redis-commands-core-py-mixin-composition-classes",
+    "conv-redis-commands-core-py-zrange-and-zaggregate-helpers",
+    "conv-redis-connection-py-module-responsibility",
+    "conv-redis-connection-py-first-arg-splitting",
+    "conv-redis-connection-py-parser-class-vs-protocol",
+    "conv-redis-connection-py-protocol-validation",
+    "conv-redis-connection-py-credentials-mutual-exclusion",
+    "conv-redis-connection-py-retry-object-ownership",
+    "conv-redis-connection-py-connect-retry-layering",
+    "conv-redis-connection-py-on-connect-handshake-order",
+    "conv-redis-connection-py-handshake-failure-cleanup",
+    "conv-redis-connection-py-socket-lifecycle-and-is-connected",
+    "conv-redis-connection-py-error-to-exception-mapping",
+    "conv-redis-connection-py-connect-callbacks-weakrefs",
+    "conv-redis-connection-py-health-check-bookkeeping",
+    "conv-redis-connection-py-maint-notifications-requirements",
+    "conv-redis-connection-py-per-connection-pool-handler-copy",
+    "conv-redis-connection-py-relaxed-timeout-mutation-rules",
+    "conv-redis-connection-py-disconnect-resets-maintenance",
+    "conv-redis-connection-py-fork-safety-checkpid",
+    "conv-redis-connection-py-get-connection-leak-guard",
+    "conv-redis-connection-py-readiness-check-on-checkout",
+    "conv-redis-connection-py-connection-count-metric-pairing",
+    "conv-redis-connection-py-foreign-connection-release",
+    "conv-redis-connection-py-blocking-pool-queue-semantics",
+    "conv-redis-connection-py-blocking-pool-maintenance-lock",
+    "conv-redis-connection-py-cache-proxy-compatibility-gate",
+    "conv-redis-connection-py-cache-entry-race-protection",
+    "conv-redis-connection-py-cache-keys-kwarg",
+    "conv-redis-connection-py-url-parsing-contract",
+    "conv-redis-connection-py-ssl-option-handling",
+    "conv-redis-connection-py-repr-redaction",
+    "conv-redis-connection-py-host-as-property"
+  ],
+  "records": [
+    {
+      "id": "conv-redis-asyncio-cluster-py-async-cluster-mirrors-sync-cluster",
+      "text": "redis/asyncio/cluster.py is the asyncio twin of redis/cluster.py and deliberately does not own the protocol-agnostic cluster logic: PRIMARY/REPLICA/SLOT_ID constants, LoadBalancer/LoadBalancingStrategy, parse_cluster_slots, get_node_name, PIPELINE_BLOCKED_COMMANDS/block_pipeline_command, and AbstractRedisCluster (NODE_FLAGS, COMMAND_FLAGS, RESULT_CALLBACKS, ERRORS_ALLOW_RETRY, RedisClusterRequestTTL) are imported from redis.cluster. Behaviour changes to those belong in the sync module so both clients stay in sync; this module should only hold the await-specific code.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "ownership",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "ownership",
+        "topic": "async cluster mirrors sync cluster",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-lazy-initialize-under-lock",
+      "text": "RedisCluster is constructed without I/O: the `_initialize` flag means \"topology unknown\". initialize() double-checks `_initialize` inside `self._lock` (an asyncio.Lock created lazily on first use, never in __init__, so the client can be built outside a running loop), and aclose() flips `_initialize` back to True under the same lock. Any new code path that touches the topology must go through this flag rather than calling nodes_manager.initialize() directly.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "invariant",
+        "topic": "lazy initialize under lock",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-initialize-failure-cl-c4733c149a4e",
+      "text": "If nodes_manager.initialize() or commands_parser.initialize() raises, initialize() closes connections for both `nodes_cache` and `startup_nodes` (two aclose() calls, the second with attr=\"startup_nodes\") before re-raising, so a failed bring-up never leaves half-open sockets. `_initialize` stays True on failure.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "invariant",
+        "topic": "initialize failure closes both caches",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-readonly-connect-hook",
+      "text": "read_from_replicas or load_balancing_strategy being set injects `redis_connect_func=self.on_connect` into connection_kwargs; on_connect sends READONLY after the normal handshake and raises ConnectionError unless the reply is OK. Because READONLY is per-connection state that goes stale after a failover, connection-level error handling in this module must disconnect/mark connections rather than reuse them.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "invariant",
+        "topic": "READONLY connect hook",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-node-connections-never-retry",
+      "text": "ClusterNode.acquire_connection creates every Connection with Retry(NoBackoff(), retries=0, supported_errors=(ConnectionError,)) on purpose: all retrying lives in the cluster layer (RedisCluster.execute_command / strategy retry loops) which can refresh topology. Enabling connection-level retries here would block the node's connection list on unreachable nodes and must not be reintroduced.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "convention",
+        "topic": "node connections never retry",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-explicit-target-nodes-bf6e4bac5d7e",
+      "text": "When the caller passes an explicit target_nodes (a ClusterNode, list or dict rather than a node flag string), execute_command sets retry_attempts to 0 and never re-derives nodes, so errors from user-pinned nodes propagate on the first attempt without topology reinitialization. Only node-flag/policy-routed commands get the retry loop.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "invariant",
+        "topic": "explicit target_nodes disables retries",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-policy-callback-registry",
+      "text": "Routing is table-driven: `_command_flags_mapping` maps legacy COMMAND_FLAGS values (RANDOM, PRIMARIES, ALL_NODES, REPLICAS, DEFAULT_NODE, SLOT_ID) onto RequestPolicy values, and `_policies_callback_mapping` maps each RequestPolicy/ResponsePolicy to a callback. `_determine_nodes` calls the callback with (command, *args) and awaits it for DEFAULT_KEYED, with (command) for DEFAULT_KEYLESS, and with no arguments otherwise. Adding a policy without a `_policies_callback_mapping` entry, or with the wrong arity, raises KeyError/TypeError at command time.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "convention",
+        "topic": "policy callback registry",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-multi-key-commands-single-slot",
+      "text": "_determine_slot requires all keys of a command to hash to one slot and raises RedisClusterException otherwise; commands with no keys raise unless they are EVAL/EVALSHA/FCALL/FCALL_RO with zero keys, which are routed to a random slot. EVAL/EVALSHA keys are parsed client-side from `numkeys` instead of asking the server, and a command whose COMMAND_FLAGS entry is SLOT_ID takes args[0] as the slot id.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "invariant",
+        "topic": "multi-key commands single slot",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-ft-cursor-follows-ft-aggregate",
+      "text": "`_aggregate_nodes` is a sticky field set by _determine_nodes whenever the routed command is ft.aggregate, and RequestPolicy.SPECIAL (get_special_nodes) replays those nodes so FT.CURSOR reaches the node that owns the cursor; get_special_nodes raises RedisClusterException if no FT.AGGREGATE ran first.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "invariant",
+        "topic": "FT.CURSOR follows FT.AGGREGATE",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-request-ttl-redirect-loop",
+      "text": "_execute_command drives redirects in a loop bounded by RedisClusterRequestTTL, decrementing ttl each iteration: an AskError sets the redirect address and the next iteration sends ASKING to that node first; a MovedError sets `moved` so the next iteration re-derives the slot's node. Falling out of the loop must raise ClusterError(\"TTL exhausted.\") \u2014 no code path may loop without consuming ttl.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "invariant",
+        "topic": "request TTL redirect loop",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-maxconnectionserror-is-client-side",
+      "text": "MaxConnectionsError raised while acquiring a connection means local pool exhaustion, not a node failure: _execute_command re-raises it without marking connections for reconnect, without reordering nodes and without setting `_initialize`, and it is not in ERRORS_ALLOW_RETRY. It must never trigger a topology refresh.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "invariant",
+        "topic": "MaxConnectionsError is client-side",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-connection-error-schedules-reinit",
+      "text": "On ConnectionError/TimeoutError from a node, _execute_command must (a) mark that node's in-use connections for reconnect and disconnect its free ones, clearing stale per-connection state such as READONLY, (b) move the node to the end of startup_nodes/nodes_cache so it is tried last during reinitialization and default-node selection, (c) set `self._initialize = True` and re-raise \u2014 the retry loop in execute_command performs the actual initialize() and replace_default_node().",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "invariant",
+        "topic": "connection error schedules reinit",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-moved-reinitialize-counter",
+      "text": "Each MovedError increments `reinitialize_counter`; when reinitialize_steps is non-zero and the counter is a multiple of it, the client calls aclose() (forcing a full topology rediscovery) and resets the counter, otherwise it only patches the single slot via nodes_manager.move_slot(e). reinitialize_steps == 0 therefore means \"never full-reinit on MOVED\".",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "invariant",
+        "topic": "MOVED reinitialize counter",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-exception-carries-connection",
+      "text": "Every exception that leaves _execute_command has `e.connection` set to the ClusterNode it came from, and execute_command's metric/error-recording branches are gated on `hasattr(e, \"connection\")`. New error paths that skip this assignment silently lose observability data; the attribute holds a ClusterNode here, not a Connection, so consumers must tolerate both (see _record_command_metric's db lookup).",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "convention",
+        "topic": "exception carries connection",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-clusternode-owns-its-connections",
+      "text": "ClusterNode is a hand-rolled pool, not a ConnectionPool: `_connections` holds every connection ever created (entries are never removed) and `_free` is a deque capped at max_connections. acquire_connection pops from `_free`, else creates a new connection while len(_connections) < max_connections, else raises MaxConnectionsError; callers must return the connection by appending it to `_free` (release()) in a finally block. ClusterPubSub is the exception \u2014 it builds its own ConnectionPool from node.connection_kwargs instead of borrowing node connections.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "architecture",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "architecture",
+        "topic": "ClusterNode owns its connections",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-lazy-reconnect-protocol",
+      "text": "Connections in use are never disconnected in place; they are flagged with mark_for_reconnect() and actually dropped later by disconnect_if_needed() when acquired/released, which is what makes topology changes race-free. ClusterNode.execute_command/execute_pipeline call disconnect_if_needed both before sending and before returning the connection to `_free`; only idle connections may be closed eagerly (disconnect_free_connections).",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "invariant",
+        "topic": "lazy reconnect protocol",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-nodesmanager-epoch-guard",
+      "text": "NodesManager.initialize() snapshots `_epoch` before awaiting `_initialize_lock` and returns immediately if the epoch changed while waiting, so concurrent callers do not rediscover the topology repeatedly; a successful pass must increment `_epoch` at the end. The new nodes/slots mapping is assembled in temporary dicts and only published (slots_cache assignment + set_nodes + default_node = first PRIMARY) after coverage validation, so a failed refresh leaves the previous topology intact.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "invariant",
+        "topic": "NodesManager epoch guard",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-slot-list-primary-first",
+      "text": "slots_cache[slot] is an ordered list whose index 0 is the slot's primary and whose remaining entries are its replicas; get_node_from_slot, get_node_from_key(replica=True) and load balancing all depend on this. move_slot maintains it on failover by demoting the old primary to REPLICA, appending it, and placing the redirected node at index 0 (also retargeting default_node if it was the old primary). get_node_from_slot converts IndexError/TypeError into SlotNotCoveredError.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "invariant",
+        "topic": "slot list primary first",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-pipeline-strategy-delegation",
+      "text": "ClusterPipeline holds no execution logic: it picks PipelineStrategy (transaction falsy) or TransactionStrategy (transaction truthy) at construction and forwards every operation to the ExecutionStrategy ABC. Any new pipeline API must be added to ExecutionStrategy plus both concrete strategies \u2014 the non-transactional strategy raises RedisClusterException for multi/watch/unwatch/discard and the transactional one raises NotImplementedError for mset_nonatomic. ClusterPipeline.execute() always calls reset() in a finally block.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "architecture",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "architecture",
+        "topic": "pipeline strategy delegation",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-pipeline-command-single-node",
+      "text": "PipelineStrategy requires each queued command to resolve to exactly one target node and raises RedisClusterException(\"Too many targets...\") otherwise; fan-out commands (DEL/EXISTS/TOUCH/UNLINK/mset_nonatomic) must be pre-split per slot before queueing. Retries only re-run commands whose result is unset or an Exception, node execution collects per-command exceptions into cmd.result instead of raising, and TryAgain/Moved/Ask results are re-issued individually through client.execute_command when allow_redirections is set.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "invariant",
+        "topic": "pipeline command single node",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-asyncio-cluster-py-transaction-pinned-connection",
+      "text": "TransactionStrategy pins one node and one Connection (`_transaction_connection`) for the whole WATCH/MULTI/EXEC sequence, because WATCH is only meaningful on the connection that issued it: all commands must map to a single slot (CrossSlotTransactionError otherwise), the pinned connection is never disconnect_if_needed'd while `_watching`, and reset() must send UNWATCH and release it back to the node (disconnecting instead if that fails). A slot redirect seen while watching and executing is surfaced as WatchError.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/asyncio/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/asyncio/cluster.py",
+        "kind": "invariant",
+        "topic": "transaction pinned connection",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-module-responsibility",
+      "text": "redis/cluster.py holds the entire synchronous cluster stack: RedisCluster (command routing + retry), NodesManager (topology/slot cache and per-node Redis clients), ClusterNode, LoadBalancer, ClusterPubSub, and ClusterPipeline with its two ExecutionStrategy implementations. It owns routing and topology; it does not own connection/socket behaviour (redis.connection) or the command signatures (redis.commands).",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "architecture",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "architecture",
+        "topic": "module responsibility",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-per-node-retry-disabled",
+      "text": "Per-node Redis clients are always built with Retry(NoBackoff(), retries=0, supported_errors=(ConnectionError,)) so that lower-level clients never retry; all retrying must happen at the cluster level where topology can be refreshed. Consequently a user-supplied 'retry' in kwargs is rejected with RedisClusterException, and 'db' is rejected because cluster mode has no SELECT.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "invariant",
+        "topic": "per-node retry disabled",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-allowed-connection-kwargs-list",
+      "text": "Only keys listed in REDIS_ALLOWED_KEYS and not in KWARGS_DISABLED_KEYS survive cleanup_kwargs() and reach per-node Redis/ConnectionPool construction. Any new connection option added elsewhere in the library must be added to REDIS_ALLOWED_KEYS, otherwise it is silently dropped for cluster clients with no error.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "convention",
+        "topic": "allowed connection kwargs list",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-nodes-manager-locking",
+      "text": "NodesManager.nodes_cache, slots_cache, startup_nodes and default_node are protected by self._lock (an RLock shared with the owning RedisCluster and its pipelines); any read or mutation of them must hold it. initialize() additionally holds _initialization_lock to deduplicate concurrent refreshes, and if both locks are needed _initialization_lock must be acquired first to keep a consistent order and avoid deadlock.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "invariant",
+        "topic": "nodes manager locking",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-topology-refresh-epoch-guard",
+      "text": "initialize() snapshots self._epoch before taking _initialization_lock and returns immediately if the epoch changed while waiting, so concurrent MOVED/ConnectionError handlers do not re-discover the topology repeatedly. _epoch is incremented exactly once, under _lock, at the end of a successful initialize; any new early-return path must not skip that increment for a refresh that actually swapped the caches.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "invariant",
+        "topic": "topology refresh epoch guard",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-atomic-cache-swap-on-refresh",
+      "text": "initialize() accumulates discovery results in local tmp_nodes_cache/tmp_slots and only assigns nodes_cache, slots_cache, default_node (and startup_nodes when dynamic_startup_nodes) in one block under _lock. Live caches must never be mutated incrementally during discovery, otherwise concurrent routing sees a half-built slot map.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "invariant",
+        "topic": "atomic cache swap on refresh",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-slot-list-ordering",
+      "text": "slots_cache[slot] is a non-empty list whose element 0 is the slot's primary and elements 1..n are its replicas. get_node_from_key, get_node_from_slot, LoadBalancer (ROUND_ROBIN_REPLICAS skips index 0, RANDOM_REPLICA picks randint(1, size-1)) and move_slot all depend on this; move_slot demotes the old primary to REPLICA and appends it while putting the new owner at index 0.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "invariant",
+        "topic": "slot list ordering",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-node-identity-by-name",
+      "text": "A ClusterNode's identity is its name \"host:port\"; __eq__/__hash__ use only the name, and 'localhost' is resolved to an IP in the constructor (and in NodesManager.get_node) so names are comparable. Nodes are keyed by name in nodes_cache/startup_nodes, so any address remapping (address_remap/remap_host_port) must be applied before a node name is computed.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "convention",
+        "topic": "node identity by name",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-connection-reuse-across-failures",
+      "text": "On ConnectionError/TimeoutError the failed node's redis_connection is deliberately NOT set to None: the code disconnects the bad connection, marks the pool's active connections for reconnect and disconnects free connections under pool._lock, moves the node to the end of startup_nodes/nodes_cache, and reinitializes. Setting redis_connection = None would discard a pool other threads may be using and is explicitly avoided.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "invariant",
+        "topic": "connection reuse across failures",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-execute-command-retry-loop",
+      "text": "_internal_execute_command is the only cluster-level retry loop: it retries at most self.retry.get_retries() times and only when type(e) is exactly in ERRORS_ALLOW_RETRY (ConnectionError, TimeoutError, ClusterDownError, SlotNotCoveredError) \u2014 an isinstance check is not used, so subclasses are not retried. When the caller passed explicit target_nodes, retry_attempts is forced to 0 because the nodes may be stale after a topology refresh.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "invariant",
+        "topic": "execute command retry loop",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-per-command-redirect-loop",
+      "text": "_execute_command runs a bounded redirect loop of RedisClusterRequestTTL (16) iterations: MOVED and ASK and TRYAGAIN continue the loop, everything else returns or raises. Exhausting the TTL raises ClusterError(\"TTL exhausted.\"). Every iteration must release the borrowed connection in the finally block, so no code path may return without going through it.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "invariant",
+        "topic": "per-command redirect loop",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-moved-vs-ask-handling",
+      "text": "MOVED increments reinitialize_counter and then either forces a full nodes_manager.initialize(additional_startup_nodes_info=[(e.host, e.port)]) when reinitialize_counter % reinitialize_steps == 0 (reinitialize_steps=0 disables full refresh) or patches only the affected slot via move_slot(); it then re-resolves the target node from the slot. ASK must not change the topology: it only sets redirect_addr/asking so the next iteration sends ASKING to that node first.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "invariant",
+        "topic": "moved vs ask handling",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-max-connections-not-a-node-failure",
+      "text": "MaxConnectionsError is treated as client-side resource exhaustion, not a node failure: it is re-raised without disconnecting anything and without reinitializing the topology. Do not fold it into the ConnectionError handling branch.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "invariant",
+        "topic": "max connections not a node failure",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-error-connection-attribute-for-metrics",
+      "text": "Before recording metrics, every error path attaches e.connection = connection if a connection was obtained, otherwise the target ClusterNode (which exposes host/port). Observability helpers (_record_command_metric/_record_error_metric) read host/port/db off that object, so any new exception branch must set e.connection and record the operation duration; retryable failures are recorded with is_internal=True and the final raise with is_internal=False.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "convention",
+        "topic": "error connection attribute for metrics",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-routing-policy-resolution-order",
+      "text": "Routing is resolved as: explicit target_nodes > legacy COMMAND_FLAGS/nodes_flag translated through _command_flags_mapping > policies from _policy_resolver > fallback keyed/keyless CommandPolicies. The chosen RequestPolicy indexes _policies_callback_mapping, and _determine_nodes must call each callback with the argument shape that policy expects (DEFAULT_KEYED: (command, *args); MULTI_SHARD: (*args, **kwargs); DEFAULT_KEYLESS: (command_name); everything else: no args) \u2014 the mapping and the dispatch in _determine_nodes must be changed together, and ClusterPipeline duplicates both structures.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "architecture",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "architecture",
+        "topic": "routing policy resolution order",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-slot-determination-special-cases",
+      "text": "determine_slot() deliberately avoids asking the server for some commands: SLOT_ID-flagged commands take the slot from args[1]; EVAL/EVALSHA parse numkeys locally (never use _get_command_keys for them, it is broken for numkeys=0 on old servers); EVAL/FCALL/FCALL_RO with zero keys get a random slot; CLIENT TRACKING returns None (fan-out). A multi-key command whose keys hash to more than one slot raises RedisClusterException.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "convention",
+        "topic": "slot determination special cases",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-result-aggregation-shape",
+      "text": "execute_command collects results as Dict[node_name, result] and passes it to _process_result: an entry in result_callbacks wins, otherwise a single-node dict is unwrapped to the bare value, and the ResponsePolicy callback is applied last. ResponsePolicy.ONE_SUCCEEDED short-circuits the fan-out loop after the first node. Callbacks registered in RESULT_CALLBACKS must therefore tolerate a dict keyed by node name.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "convention",
+        "topic": "result aggregation shape",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-ft-cursor-node-stickiness",
+      "text": "_determine_nodes records the nodes chosen for FT.AGGREGATE in self._aggregate_nodes so that RequestPolicy.SPECIAL commands (FT.CURSOR) can be routed to the same node; get_special_nodes raises RedisClusterException if no FT.AGGREGATE has run. Any change that stops populating _aggregate_nodes breaks FT.CURSOR.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "invariant",
+        "topic": "ft cursor node stickiness",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-pipeline-strategy-delegation",
+      "text": "ClusterPipeline is a thin facade that subclasses RedisCluster but delegates every operation to an ExecutionStrategy chosen at construction: PipelineStrategy when transaction is falsy, TransactionStrategy when true. New pipeline behaviour must be added to the abstract ExecutionStrategy and both implementations; unsupported operations are expected to raise RedisClusterException from the strategy rather than silently no-op.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "architecture",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "architecture",
+        "topic": "pipeline strategy delegation",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-pipeline-shares-parent-topology",
+      "text": "ClusterPipeline is constructed with the parent client's nodes_manager, commands_parser, callbacks and _lock, so it never owns its own topology; it also captures parent_execute_command = super().execute_command, which is the single-command fallback used to retry redirected/failed pipelined commands. Commands blocked in cluster pipelines are monkey-patched onto the ClusterPipeline class at import time from PIPELINE_BLOCKED_COMMANDS.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "ownership",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "ownership",
+        "topic": "pipeline shares parent topology",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-pipeline-write-read-ordering",
+      "text": "PipelineStrategy._send_cluster_commands writes to all per-node connections first and only then reads them all, tracking nodes_written/nodes_read as offsets into nodes.values(). The finally block relies on dict insertion order being identical to the write/read iteration order to identify dirty connections (written but not read) that must be disconnected before being released back to the pool; changing the iteration order or the counters would leak responses across callers.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "invariant",
+        "topic": "pipeline write read ordering",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-pipeline-single-target-per-command",
+      "text": "In a non-transactional cluster pipeline every queued command must resolve to exactly one target node: zero targets raises RedisClusterException(\"No targets were found...\") and more than one raises \"Too many targets for command\". Fan-out policies cannot be pipelined.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "invariant",
+        "topic": "pipeline single target per command",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-transaction-single-slot",
+      "text": "TransactionStrategy requires all watched keys and queued commands to map to one slot: _pipeline_slots must stay size 1, otherwise CrossSlotTransactionError is raised (at command time for WATCH/immediate commands, and again before MULTI/EXEC). Commands in NO_SLOTS_COMMANDS (UNWATCH) are exempt; any other slot-less command inside a transaction is rejected.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "invariant",
+        "topic": "transaction single slot",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-transaction-pinned-connection",
+      "text": "A cluster transaction pins _transaction_connection to the node owning its slot so WATCH semantics hold, and reset() must send UNWATCH (when watching) and release that connection back to its owning node's pool \u2014 found via nodes_manager.find_connection_owner \u2014 before clearing it. On slot-redirect or connection errors the pinned connection is disconnected and released, and if a redirect arrives while watching during execution a WatchError is raised instead of retrying.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "invariant",
+        "topic": "transaction pinned connection",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-on-connect-hook-chaining",
+      "text": "RedisCluster forces redis_connect_func to its own on_connect for every node connection, stashing any user-supplied callback in user_on_connect_func. on_connect must run connection.on_connect(), then send READONLY (and verify an OK reply, raising ConnectionError otherwise) whenever read_from_replicas or load_balancing_strategy is set \u2014 regardless of the node's current role, because failovers change roles \u2014 and finally invoke the user callback.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "invariant",
+        "topic": "on_connect hook chaining",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-maint-notifications-resp3-only",
+      "text": "MaintNotificationsAbstractRedisCluster is mixed into RedisCluster and must be initialised after nodes_manager exists, because it iterates get_nodes() to update already-created node pools and injects oss_cluster_maint_notifications_handler into nodes_manager.connection_kwargs for future nodes. Maintenance notifications (like client-side caching) require RESP3 and raise RedisError otherwise; with RESP3 and no explicit config, a default MaintNotificationsConfig is created.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "invariant",
+        "topic": "maint notifications resp3 only",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-cluster-py-cluster-pubsub-node-selection",
+      "text": "ClusterPubSub binds to exactly one node: if no node/host/port is given, the node is chosen lazily on the first execute_command from the keyslot of the first channel argument (or a random node for argument-less commands) and then stays fixed. Sharded pub/sub is different: it keeps a per-node PubSub in node_pubsub_mapping keyed by node name, entries are removed only when that node's PubSub reports subscribed is False on sunsubscribe.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/cluster.py"
+      ],
+      "attributes": {
+        "module": "redis/cluster.py",
+        "kind": "invariant",
+        "topic": "cluster pubsub node selection",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-module-responsibility",
+      "text": "redis/commands/core.py contains only command-builder mixins: each public method validates arguments, assembles the Redis argument list, and hands it to self.execute_command. It performs no socket I/O, no connection management and no response parsing \u2014 response decoding lives in the client's response-callback tables (redis/client.py, redis/asyncio/client.py). A diff that adds parsing logic here is in the wrong module.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "architecture",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "architecture",
+        "topic": "module responsibility",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-sync-and-async-share-one-body",
+      "text": "Every command has two @overload stubs (one typed `self: SyncClientProtocol` returning T, one typed `self: AsyncClientProtocol` returning Awaitable[T]) plus a single untyped implementation whose return annotation is `T | Awaitable[T]`. The implementation must be sync-only code that returns execute_command's result unchanged; it must never await, because the same body serves both the sync and the asyncio clients.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "convention",
+        "topic": "sync and async share one body",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-async-alias-vs-async-subclass",
+      "text": "When a command group needs no async-specific behaviour the module defines an alias (e.g. `AsyncSetCommands = SetCommands`, also for List/Stream/SortedSet/Hash/Hyperlog/Geo/PubSub/Cluster/ACL/Function). A real Async* subclass is created only to override members that cannot be shared: coroutine wrappers for NotImplementedError raisers, generator-based *_iter methods, dunder methods, and shutdown. The aliases are part of the public import surface and must not be deleted when adding a subclass.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "convention",
+        "topic": "async alias vs async subclass",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-keys-kwarg-for-routing",
+      "text": "Read-only commands pass an explicit `keys=[...]` (or `keys=args`) option to execute_command so the cluster client can route the request and the client-side cache can track key dependencies. New read commands must supply `keys=` covering every key argument; omitting it silently breaks cluster routing and cache invalidation for that command.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "invariant",
+        "topic": "keys kwarg for routing",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-extra-kwargs-are-parser-options",
+      "text": "Any keyword passed to execute_command that is not a Redis argument (withscores, score_cast_func, groups, parse_justid, parse_detail, no_values, full, as_score, get, infotype, claim_min_idle_time, minmatchlen/len/idx/withmatchlen) is an 'option' consumed by the client's response callback. Introducing a new option here is only half a change: the matching callback in the sync and async clients must accept it, otherwise the option leaks into the wire command or is dropped.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "invariant",
+        "topic": "extra kwargs are parser options",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-argument-validation-raises-dataerror",
+      "text": "Client-side argument validation (mutual exclusion, type checks, range checks, empty collections) raises redis.exceptions.DataError before any command is dispatched. A few newer methods deviate and raise ValueError instead (delex condition exclusivity, the hexpire/hpexpire/hexpireat/hpexpireat nx/xx/gt/lt checks); new code should follow the DataError convention unless it is matching one of those existing methods.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "convention",
+        "topic": "argument validation raises DataError",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-lazy-imports-from-redis-client",
+      "text": "NEVER_DECODE, EMPTY_RESPONSE and Pipeline are imported inside function bodies (`from redis.client import ...`), never at module scope, because redis.client imports this module \u2014 a top-level import would create a circular import. Any new dependency on the client package must stay function-local.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "convention",
+        "topic": "lazy imports from redis.client",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-never-decode-for-binary-payloads",
+      "text": "Commands returning raw binary payloads must set `options[NEVER_DECODE] = []` so decode_responses cannot corrupt the bytes: SYNC, PSYNC, DUMP and FUNCTION DUMP do this unconditionally, and SLOWLOG GET does it only when the connection's decode_responses is True. Adding a new binary-returning command without NEVER_DECODE will break clients configured with decode_responses=True.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "invariant",
+        "topic": "NEVER_DECODE for binary payloads",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-intentionally-unimplemented-commands",
+      "text": "Commands deliberately not supported (COMMAND INFO, COMMAND DOCS, DEBUG SEGFAULT, MEMORY DOCTOR, MEMORY HELP, LATENCY DOCTOR/GRAPH/HISTOGRAM, HELLO, FAILOVER, SCRIPT DEBUG) raise NotImplementedError instead of being omitted, so the attribute still exists on the client. The Async* subclasses re-declare each of them as `async def` delegating to super(), so awaiting them raises the same error; a new refusal must be added in both places.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "convention",
+        "topic": "intentionally unimplemented commands",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-shutdown-connectionerror-contract",
+      "text": "SHUTDOWN treats a ConnectionError from execute_command as success and returns None; a normal return means the server did not shut down and RedisError('SHUTDOWN seems to have failed.') is raised. This logic is duplicated verbatim in ManagementCommands.shutdown and AsyncManagementCommands.shutdown \u2014 both copies must be changed together.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "invariant",
+        "topic": "shutdown ConnectionError contract",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-expiry-flag-construction-helpers",
+      "text": "EX/PX/EXAT/PXAT arguments are always built via extract_expire_flags (redis.utils) and their mutual exclusivity (together with persist/keepttl) is always checked with at_most_one_value_set (.helpers) raising DataError. timedelta/datetime inputs are converted to ints locally (seconds, or *1000 for millisecond variants). New expiry-taking commands must reuse both helpers rather than hand-rolling the flags.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "convention",
+        "topic": "expiry flag construction helpers",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-bitfieldoperation-reset-semantics",
+      "text": "BitFieldOperation accumulates operation tuples and its execute() snapshots self.command, calls reset(), then dispatches \u2014 so the instance is always reusable after execute and reset() must re-apply the default overflow. overflow() appends an OVERFLOW token only when the value differs from _last_overflow, so any change to overflow tracking must preserve that de-duplication or the emitted BITFIELD command changes.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "invariant",
+        "topic": "BitFieldOperation reset semantics",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-script-sha-and-noscripterror-retry",
+      "text": "Script/AsyncScript precompute self.sha as sha1 of the client-encoded script text and call EVALSHA; on NoScriptError they re-run SCRIPT LOAD, overwrite self.sha and retry exactly once. When the target client is a Pipeline, the Script instance must be added to client.scripts before evalsha so the pipeline can re-register the script on NOSCRIPT \u2014 dropping that registration breaks scripted pipelines.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "invariant",
+        "topic": "Script sha and NoScriptError retry",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-script-encoder-backward-4486340529df",
+      "text": "Script.get_encoder tries registered_client.get_encoder() and falls back to registered_client.connection_pool.get_encoder() so third-party 'registered_client' objects written before cluster scripting support keep working. The fallback is deliberate backwards compatibility, not dead code.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "convention",
+        "topic": "Script encoder backward compatibility",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-streaming-lag-recording-in-xread",
+      "text": "xread and xreadgroup inspect the value returned by execute_command with inspect.iscoroutine: for the async client they return a wrapper coroutine that awaits the response and then calls the async recorder, for the sync client they call record_streaming_lag_from_response directly. Both paths must be preserved for any change to these two methods, and the response object must still be returned unmodified to the caller.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "invariant",
+        "topic": "streaming lag recording in xread",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-pubsub-publish-metric-timing",
+      "text": "publish and spublish call record_pubsub_message(direction=PUBLISH, ...) immediately after execute_command and before returning, using str_if_bytes on the channel. On the async client this records at call time \u2014 before the coroutine is awaited and regardless of whether the command ultimately succeeds; the metric is therefore an attempt counter, not a success counter.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "invariant",
+        "topic": "pubsub publish metric timing",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-watch-and-unwatch-are-no-ops",
+      "text": "BasicKeyCommands.watch/unwatch do not send anything: they only emit a DeprecationWarning telling callers to use a Pipeline. WATCH/UNWATCH state belongs to the Pipeline classes, so any real implementation of transactional watching must go there, not here.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "ownership",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "ownership",
+        "topic": "watch and unwatch are no-ops",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-experimental-api-decorators",
+      "text": "Unstable server features are marked with decorators from redis.utils rather than only docstrings: @experimental_method() on whole methods (delex, digest, digest_local) and @experimental_args([...]) on individual parameters (set's ifeq/ifne/ifdeq/ifdne). New pre-GA commands or parameters are expected to carry the corresponding decorator so warnings are emitted consistently.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "convention",
+        "topic": "experimental API decorators",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-digest-local-optional-xxhash",
+      "text": "digest_local computes the digest client-side with the optional xxhash dependency and raises NotImplementedError with install instructions when HAS_XXHASH is False. It returns str when the client's encoder has decode_responses=True and bytes otherwise, deliberately mirroring the server-side DIGEST reply type; that type-matching behaviour is what callers compare against and must be kept.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "invariant",
+        "topic": "digest_local optional xxhash",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-mixin-composition-classes",
+      "text": "Command groups are composed twice: DataAccessCommands/CoreCommands for the sync clients and AsyncDataAccessCommands/AsyncCoreCommands for the asyncio clients, the latter built from the Async* names. A newly added command-group class is invisible to clients until it is added to both composition classes (and given either an Async* alias or subclass).",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "architecture",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "architecture",
+        "topic": "mixin composition classes",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-commands-core-py-zrange-and-zaggregate-helpers",
+      "text": "The ZRANGE family funnels through the private _zrange helper (which enforces byscore/bylex exclusivity, offset+num pairing and the bylex+withscores ban) and ZUNION/ZINTER/ZUNIONSTORE/ZINTERSTORE funnel through _zaggregate (which handles dict-of-weights inputs, WEIGHTS, AGGREGATE validation and withscores). New variants of those families must go through the helpers instead of building pieces inline. Note zrange() with desc=True and no byscore/bylex/limit deliberately delegates to zrevrange for compatibility with older servers.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/commands/core.py"
+      ],
+      "attributes": {
+        "module": "redis/commands/core.py",
+        "kind": "convention",
+        "topic": "zrange and zaggregate helpers",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-module-responsibility",
+      "text": "redis/connection.py owns the synchronous transport layer: RESP command serialization (HiredisRespSerializer/PythonRespSerializer), the connection classes (AbstractConnection, Connection, SSLConnection, UnixDomainSocketConnection, CacheProxyConnection), URL parsing (parse_url), and the pools (ConnectionPool, BlockingConnectionPool). It knows nothing about commands or response callbacks \u2014 those belong to the client layer \u2014 and it never interprets replies except for the handshake commands it issues itself.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "architecture",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "architecture",
+        "topic": "module responsibility",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-first-arg-splitting",
+      "text": "Both serializers split the first argument on whitespace (e.g. 'CONFIG GET') into separate protocol arguments, and the split pieces are bytes so they bypass the encoder. Any change to packing must preserve this or multi-word command names will be sent as a single bulk string and rejected by the server.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "first arg splitting",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-parser-class-vs-protocol",
+      "text": "The parser must match the negotiated protocol: AbstractConnection.__init__ upgrades a _RESP2Parser to _RESP3Parser when protocol==3, and on_connect_check_health repeats the upgrade before sending HELLO (copying EXCEPTION_CLASSES from the old parser and re-running on_connect). Hiredis parsers handle both and are left alone. Losing either upgrade point breaks push-message support.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "parser class vs protocol",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-protocol-validation",
+      "text": "protocol is coerced to int in AbstractConnection.__init__; a non-numeric value raises ConnectionError('protocol must be an integer'), None falls back to DEFAULT_RESP_VERSION (2), and anything outside 2..3 raises ConnectionError. Comparisons elsewhere in the module still defensively accept both int and str forms (e.g. `in [2, \"2\"]`).",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "protocol validation",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-credentials-mutual-exclusion",
+      "text": "Passing username/password together with credential_provider raises DataError at construction time. Auth credentials are always resolved through a CredentialProvider (UsernamePasswordCredentialProvider is synthesized when only username/password are given), so new auth paths should go through the provider rather than reading self.password.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "credentials mutual exclusion",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-retry-object-ownership",
+      "text": "The Retry passed to a connection is deep-copied because Retry is mutable and shared per-pool kwargs would otherwise be aliased; retry_on_timeout is folded into the retry_on_error list, and if no retry and no retry_on_error are configured the connection gets Retry(NoBackoff(), 0) (i.e. retries disabled but the call_with_retry code path still used).",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "convention",
+        "topic": "retry object ownership",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-connect-retry-layering",
+      "text": "connect() wraps the whole connect+handshake in retry.call_with_retry and therefore calls connect_check_health(retry_socket_connect=False); connect_check_health only retries the raw socket connect when called directly. Making both layers retry would multiply attempts, so a diff that adds retry inside connect_check_health while keeping connect()'s wrapper is a bug.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "connect retry layering",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-on-connect-handshake-order",
+      "text": "on_connect_check_health has a fixed order that callers depend on: parser.on_connect, then HELLO/AUTH, then maintenance-notification activation, then CLIENT SETNAME, then CLIENT SETINFO LIB-NAME/LIB-VER, then SELECT db. Auth commands are sent with check_health=False because a PING health check before AUTH would fail.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "on_connect handshake order",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-handshake-failure-cleanup",
+      "text": "Any RedisError raised while running on_connect (or redis_connect_func) in connect_check_health causes disconnect() before re-raising, so a connection object is never left with a live socket in a half-initialized state. CLIENT SETINFO failures are the deliberate exception: ResponseError there is swallowed because old servers lack the subcommand.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "handshake failure cleanup",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-socket-lifecycle-and-is-connected",
+      "text": "self._sock is the single source of truth for is_connected. disconnect() clears self._sock before closing the socket and resets the should_reconnect flag, and only calls socket.shutdown() when os.getpid() == self.pid so a forked child never tears down the parent's connection.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "socket lifecycle and is_connected",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-error-to-exception-mapping",
+      "text": "Transport errors are normalized before leaving the module: socket.timeout becomes redis TimeoutError, OSError becomes ConnectionError with a formatted host message, and read_response/send_packed_command disconnect on any BaseException (a lot of caller code relies on the connection being dropped so that command/response pairs cannot desynchronize). read_response re-raises ResponseError instances returned by the parser and deletes the local reference to avoid traceback ref cycles.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "convention",
+        "topic": "error to exception mapping",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-connect-callbacks-weakrefs",
+      "text": "register_connect_callback stores weakref.WeakMethod, so only bound methods may be registered and callers do not need to deregister when they die; connect_check_health prunes dead refs before invoking the survivors. Passing a plain function or lambda will not work.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "convention",
+        "topic": "connect callbacks weakrefs",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-health-check-bookkeeping",
+      "text": "next_health_check is refreshed after every successful read_response when health_check_interval is set, and check_health() is only invoked from send_packed_command when check_health=True; the PING/PONG probe itself sends with check_health=False to prevent infinite recursion.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "health check bookkeeping",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-maint-notifications-requirements",
+      "text": "Maintenance notifications require RESP3 and a push-capable parser: _configure_maintenance_notifications raises RedisError if no parser is supplied or if the parser is neither _HiredisParser nor _RESP3Parser, and MaintNotificationsAbstractConnectionPool raises RedisError when the config is enabled with a non-RESP3 protocol. When config.enabled == 'auto', a ResponseError from the CLIENT MAINT_NOTIFICATIONS handshake is only logged; otherwise it propagates and fails the connection.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "maint notifications requirements",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-per-connection-pool-handler-copy",
+      "text": "A MaintNotificationsPoolHandler must never be attached to more than one connection: every attachment path calls get_handler_for_connection() to obtain a copy and then set_connection(self), because the handler holds a single connection reference and sharing it would make all connections point at the last one registered.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "per-connection pool handler copy",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-relaxed-timeout-mutation-rules",
+      "text": "update_current_socket_timeout must not touch a socket whose gettimeout() is 0: a zero timeout means a non-blocking can_read() is in flight and switching it to blocking mid-read deadlocks. Timeout changes must also be mirrored into the parser buffer (update_parser_timeout), and the sentinel conventions are SENTINEL = 'leave host unchanged' and -1 = 'leave timeout unchanged'.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "relaxed timeout mutation rules",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-disconnect-resets-maintenance",
+      "text": "disconnect() resets relaxed timeouts, clears maintenance_state to NONE and clears the processed-start / skipped-end notification sets only when the connection was in MAINTENANCE state; connections in MOVING state are deliberately left alone because their state is reverted when the moving TTL expires.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "disconnect resets maintenance",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-fork-safety-checkpid",
+      "text": "Every pool method that touches pool state calls _checkpid() first. reset() must assign self.pid as its very last statement, because other threads compare self.pid to os.getpid() without holding a lock; _fork_lock is acquired with a 5 second timeout and ChildDeadlockedError is raised on failure to mitigate forking while the lock is held.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "fork safety checkpid",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-get-connection-leak-guard",
+      "text": "In both pools, everything after the connection is checked out is wrapped so that any BaseException calls self.release(connection) before re-raising \u2014 a checked-out connection must never be dropped on the floor, or the pool leaks capacity permanently.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "get_connection leak guard",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-readiness-check-on-checkout",
+      "text": "Checkout verifies the connection has no pending data (can_read() -> ConnectionError('Connection has data'), then one disconnect/reconnect retry, then 'Connection not ready'). ConnectionPool deliberately skips this check when client-side caching or maintenance notifications are enabled, since pending push messages are expected there.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "convention",
+        "topic": "readiness check on checkout",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-connection-count-metric-pairing",
+      "text": "Pool observability keeps a gauge per ConnectionState: make_connection records IDLE +1, checkout records IDLE -1 / USED +1, release records USED -1 / IDLE +1, and reset()/__del__ record negative deltas for everything still tracked. Any new checkout or release path must emit the matching pair or the gauge drifts; releases of foreign connections still decrement USED but under pool_name 'unknown_pool'.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "convention",
+        "topic": "connection count metric pairing",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-foreign-connection-release",
+      "text": "release() treats connections it does not own by pid as foreign: ConnectionPool returns early if the connection is not in _in_use_connections, and disconnects (without re-adding, and without decrementing _created_connections) any connection failing owns_connection(); BlockingConnectionPool instead disconnects it and puts a None placeholder back on the queue so pool capacity is preserved.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "foreign connection release",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-blocking-pool-queue-semantics",
+      "text": "BlockingConnectionPool caps concurrency with a LifoQueue pre-filled with max_connections None sentinels rather than a counter: popping None means 'create a new connection', LIFO ordering means real connections are reused before new ones are created, and self._connections holds every created connection so free = items in queue and in-use = _connections minus queue contents.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "architecture",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "architecture",
+        "topic": "blocking pool queue semantics",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-blocking-pool-maintenance-lock",
+      "text": "BlockingConnectionPool guards get_connection/release/make_connection/reset/disconnect with self._lock only while the _in_maintenance flag is set (set via set_in_maintenance during MOVING processing), tracking acquisition in self._locked and releasing in a finally block. New methods that mutate the queue must follow the same conditional-lock pattern, and must not take self._lock unconditionally because the maintenance paths already hold it.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "convention",
+        "topic": "blocking pool maintenance lock",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-cache-proxy-compatibility-gate",
+      "text": "CacheProxyConnection.connect() inspects the wrapped connection's handshake_metadata and raises ConnectionError unless the server reports name 'redis' and version >= 7.4.0; client-side caching also requires RESP3 (validated in ConnectionPool.__init__). CacheProxyConnection wraps a real connection and delegates every non-cache operation to it, so new ConnectionInterface methods must be added to the proxy too.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "cache proxy compatibility gate",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-cache-entry-race-protection",
+      "text": "All reads and writes of the cache in CacheProxyConnection happen under self._cache_lock. send_command inserts an IN_PROGRESS placeholder entry before hitting the network so a concurrent connection cannot issue the same command, read_response only promotes an entry to VALID if it still exists (it may have been invalidated meanwhile), and a None response deletes the key instead of caching it.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "cache entry race protection",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-cache-keys-kwarg",
+      "text": "For cachable commands, CacheProxyConnection.send_command requires a `keys` keyword argument to build the CacheKey and raises ValueError('Cannot create cache key.') otherwise; non-cachable commands clear _current_command_cache_key and pass straight through. _current_command_cache_key is the single-slot handoff between send_command and read_response, so the pair must always be called in order on the same connection.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "invariant",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "invariant",
+        "topic": "cache keys kwarg",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-url-parsing-contract",
+      "text": "parse_url accepts only redis://, rediss:// and unix:// (anything else raises ValueError), casts querystring values through URL_QUERY_ARGUMENT_PARSERS (unknown names are passed through as strings, cast failures raise ValueError), percent-unquotes username/password/host/path, and selects connection_class (UnixDomainSocketConnection for unix, SSLConnection for rediss). In from_url the URL options are applied last, so querystring values override explicit kwargs \u2014 except connection_class, which the kwarg wins.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "convention",
+        "topic": "url parsing contract",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-ssl-option-handling",
+      "text": "SSLConnection builds the context in _wrap_socket_with_ssl: ssl_cert_reqs accepts the strings none/optional/required (invalid values raise RedisError), check_hostname is forced False when verify_mode is CERT_NONE, ssl_validate_ocsp and ssl_validate_ocsp_stapled are mutually exclusive (RedisError), OCSP validation requires the cryptography extra, and if wrapping fails the raw socket is closed before re-raising to avoid an fd leak.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "convention",
+        "topic": "ssl option handling",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-repr-redaction",
+      "text": "ConnectionPool.__repr__ replaces the values of keys in SENSITIVE_REPR_KEYS (password, username, ssl_password, credential_provider) with <REDACTED>. Any new credential-bearing connection kwarg must be added to that frozenset or it will leak into logs.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "convention",
+        "topic": "repr redaction",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    },
+    {
+      "id": "conv-redis-connection-py-host-as-property",
+      "text": "Connection stores the host in self._host and exposes it via a host property/setter (CacheProxyConnection forwards to the wrapped connection) so maintenance-notification code can retarget a connection at a new address while orig_host_address keeps the configured value for reset_tmp_settings. Code must not bypass the property by writing to _host directly.",
+      "memory_type": "repo_convention",
+      "owner_id": "memory-agent",
+      "topics": [
+        "convention",
+        "convention",
+        "redis/connection.py"
+      ],
+      "attributes": {
+        "module": "redis/connection.py",
+        "kind": "convention",
+        "topic": "host as property",
+        "source": "inferred",
+        "convention_version": 1,
+        "pr_ordinal": 0
+      }
+    }
+  ]
+}

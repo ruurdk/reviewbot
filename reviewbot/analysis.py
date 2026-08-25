@@ -257,7 +257,21 @@ def breakeven_ordinal(
 def primer_amortization(
     records: Iterable[CallRecord], *, treatment: str = "memory"
 ) -> dict[str, Any]:
-    recs = [r for r in records if r.agent == treatment]
+    """Primer cost and its per-PR amortisation.
+
+    Superseded rows are excluded, exactly as `per_pr()` excludes them. Without
+    that this reported the *sum* of every primer attempt: run-2's first primer
+    died when the store dropped a write, and the report then showed $4.67 here
+    against $2.39 in `marginal` -- two different primer costs in one document,
+    which is worse than either being wrong on its own. The abandoned money is
+    real and stays in the ledger; `abandoned_cost()` is where it belongs.
+    """
+    dropped = abandoned_seqs(list(records))
+    recs = [
+        r
+        for r in records
+        if r.agent == treatment and r.seq not in dropped and r.kind != ABANDONED
+    ]
     prime = [r for r in recs if r.phase == "prime" and r.billable]
     reviewed = sorted({r.pr_ordinal for r in recs if r.phase == "review"})
     n = len(reviewed)
@@ -366,6 +380,147 @@ def shared_prefix_freeriding(records: Iterable[CallRecord]) -> dict[str, int]:
     return out
 
 
+def retrieval_mix(records: Iterable[CallRecord]) -> dict[str, Any]:
+    """What the retrieval window actually contained, per PR, by memory type.
+
+    The question this exists to answer: the store grows monotonically (nothing
+    is ever merged or superseded) while the retrieval budget is fixed, so does
+    the growing pile of episodic findings win slots, or do the primed
+    conventions hold them? A `memories_returned` count cannot tell them apart --
+    only the ids can, via their `ID_PREFIX` tag.
+
+    `saturated` is the other half of the picture. A window that comes back full
+    on every PR is not measuring relevance, it is measuring the limit: whatever
+    ranked 21st is invisible, and there is no relevance score in the response to
+    tell us whether slot 20 was worth having. Run-1 saturated on all 19 PRs.
+    """
+    from .memory import memory_type_of
+
+    by_ordinal: dict[int, dict[str, Any]] = {}
+    for rec in sorted(records, key=lambda r: r.seq):
+        if rec.memory_op != "search" or rec.retrieved_ids is None:
+            continue
+        row = by_ordinal.setdefault(
+            rec.pr_ordinal, {"by_type": {}, "unknown": 0, "total": 0, "saturated": False}
+        )
+        for memory_id in rec.retrieved_ids:
+            memory_type = memory_type_of(memory_id)
+            if memory_type is None:
+                row["unknown"] += 1
+            else:
+                row["by_type"][memory_type] = row["by_type"].get(memory_type, 0) + 1
+            row["total"] += 1
+        if rec.search_limit and len(rec.retrieved_ids) >= rec.search_limit:
+            row["saturated"] = True
+    ordinals = sorted(by_ordinal)
+    totals: dict[str, int] = {}
+    for row in by_ordinal.values():
+        for memory_type, count in row["by_type"].items():
+            totals[memory_type] = totals.get(memory_type, 0) + count
+    return {
+        "per_pr": {str(o): by_ordinal[o] for o in ordinals},
+        "totals": totals,
+        "unknown": sum(r["unknown"] for r in by_ordinal.values()),
+        "saturated_prs": [o for o in ordinals if by_ordinal[o]["saturated"]],
+        # Absent for a run whose search rows predate id logging, which is the
+        # honest answer -- not an empty mix that reads like "nothing retrieved".
+        "instrumented": bool(by_ordinal),
+    }
+
+
+def marginal_per_pr(
+    records: Iterable[CallRecord], *, regime: str = "as_measured"
+) -> dict[str, Any]:
+    """The steady-state per-PR saving, primer excluded.
+
+    Why this and not the cumulative percentage: a cumulative saving is a
+    function of how many PRs you happened to run, because the one-time primer is
+    amortised over them. "21% cheaper over 19 PRs" is really three numbers glued
+    together -- a per-review saving, a setup cost, and an arbitrary N -- and only
+    the first is a property of the technique.
+
+    So the headline figure is the marginal one: what a review costs with memory
+    versus without, once the repo has been primed. The primer is then reported
+    for what it is, a setup cost denominated in reviews (`primer_payback_prs`).
+
+    Three summary statistics, and they are not interchangeable:
+
+    * `aggregate_pct` -- sum of savings over sum of baseline cost. **Quote this
+      one.** It is size-weighted, so it predicts a bill.
+    * `mean_pct` -- unweighted mean of per-PR percentages. Gives a 300-line PR
+      the same vote as a 12,000-line one, and since memory helps proportionally
+      more on small PRs, it runs several points higher. Flattering, not wrong.
+    * `median_pct` -- the typical PR, robust to the largest diffs.
+
+    `worst_pr` is reported alongside them because a mean hides the case a
+    skeptic most needs to see: in run-1 the false-positive-trap PR cost the
+    memory agent *more* than the baseline.
+
+    Note that even the marginal figure is not fully sequence-independent -- it
+    drifts with PR-size mix, because on a large diff the diff itself dominates
+    the prompt and memory cannot help. Run-1 measures 33.0% over its first 11
+    PRs and 27.7% over all 19, the back half holding the biggest diffs.
+    """
+    key = "billed_usd" if regime == "as_measured" else "billed_usd_production"
+    table = per_pr(records)
+    primer = sum(
+        getattr(t.total, key) for (_, ordinal), t in table.items() if ordinal == 0
+    )
+    rows: list[dict[str, Any]] = []
+    for ordinal in sorted({o for _, o in table if o > 0}):
+        base = table.get(("baseline", ordinal))
+        mem = table.get(("memory", ordinal))
+        if base is None or mem is None:
+            continue  # a half-measured PR is not comparable
+        b_usd, m_usd = getattr(base.total, key), getattr(mem.total, key)
+        b_ctx, m_ctx = base.total.context_volume, mem.total.context_volume
+        rows.append(
+            {
+                "pr_ordinal": ordinal,
+                "pr_id": base.pr_id,
+                "baseline_usd": b_usd,
+                "memory_usd": m_usd,
+                "saving_usd": b_usd - m_usd,
+                "saving_pct": (100.0 * (b_usd - m_usd) / b_usd) if b_usd else 0.0,
+                "baseline_context": b_ctx,
+                "memory_context": m_ctx,
+                "context_pct": (100.0 * (b_ctx - m_ctx) / b_ctx) if b_ctx else 0.0,
+            }
+        )
+    if not rows:
+        return {"n_prs": 0, "primer_usd": primer, "per_pr": []}
+
+    tb = sum(r["baseline_usd"] for r in rows)
+    tm = sum(r["memory_usd"] for r in rows)
+    cb = sum(r["baseline_context"] for r in rows)
+    cm = sum(r["memory_context"] for r in rows)
+    pcts = sorted(r["saving_pct"] for r in rows)
+    mid = len(pcts) // 2
+    median = pcts[mid] if len(pcts) % 2 else (pcts[mid - 1] + pcts[mid]) / 2
+    mean_saving = (tb - tm) / len(rows)
+    worst = min(rows, key=lambda r: r["saving_pct"])
+    best = max(rows, key=lambda r: r["saving_pct"])
+    return {
+        "regime": regime,
+        "n_prs": len(rows),
+        # The headline: size-weighted, primer excluded.
+        "aggregate_pct": 100.0 * (tb - tm) / tb if tb else 0.0,
+        "mean_pct": sum(pcts) / len(pcts),
+        "median_pct": median,
+        "mean_saving_usd": mean_saving,
+        "baseline_mean_usd": tb / len(rows),
+        "memory_mean_usd": tm / len(rows),
+        "context_aggregate_pct": 100.0 * (cb - cm) / cb if cb else 0.0,
+        # The setup cost, denominated in reviews -- which is the unit that makes
+        # it comparable to the saving it has to pay back.
+        "primer_usd": primer,
+        "primer_payback_prs": (primer / mean_saving) if mean_saving > 0 else None,
+        "worst_pr": {k: worst[k] for k in ("pr_ordinal", "pr_id", "saving_pct", "saving_usd")},
+        "best_pr": {k: best[k] for k in ("pr_ordinal", "pr_id", "saving_pct", "saving_usd")},
+        "per_pr": rows,
+    }
+
+
 def summary(records: Iterable[CallRecord]) -> dict[str, Any]:
     recs = list(records)
     table = per_pr(recs)
@@ -382,6 +537,14 @@ def summary(records: Iterable[CallRecord]) -> dict[str, Any]:
         "cache_integrity": cache_integrity(recs),
         "abandoned": abandoned_cost(recs),
         "shared_prefix_freeriding": shared_prefix_freeriding(recs),
+        "retrieval_mix": retrieval_mix(recs),
+        # The N-independent headline. Both regimes, because the page toggles.
+        "marginal": {
+            "as_measured": marginal_per_pr(recs, regime="as_measured"),
+            "production_equivalent": marginal_per_pr(
+                recs, regime="production_equivalent"
+            ),
+        },
         "phases": list(PHASES),
         # One row per (agent, PR), serialized rather than left for a consumer to
         # recompute: the replay page must not do its own accounting, or the

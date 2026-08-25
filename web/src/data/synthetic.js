@@ -104,7 +104,25 @@ export const SYNTHETIC_REPORT = {
         memory_overhead_usd: 1.05
       }
     },
-    primer: { primer_usd: 1.125, prs: rows.length, primer_usd_per_pr: 1.125 / rows.length }
+    primer: { primer_usd: 1.125, prs: rows.length, primer_usd_per_pr: 1.125 / rows.length },
+    // Placeholder shaped like analysis.marginal_per_pr so the fallback path
+    // exercises the same layout the real report drives.
+    marginal: {
+      as_measured: {
+        n_prs: rows.length, aggregate_pct: 24.0, mean_pct: 27.5, median_pct: 29.0,
+        mean_saving_usd: 0.38, baseline_mean_usd: 1.58, memory_mean_usd: 1.2,
+        context_aggregate_pct: 55.0, primer_usd: 1.125, primer_payback_prs: 3.0,
+        worst_pr: { pr_ordinal: 16, pr_id: "SYNTHETIC#0", saving_pct: -12.0, saving_usd: -0.1 },
+        best_pr: { pr_ordinal: 8, pr_id: "SYNTHETIC#1", saving_pct: 61.0, saving_usd: 0.7 }
+      },
+      production_equivalent: {
+        n_prs: rows.length, aggregate_pct: 28.0, mean_pct: 31.0, median_pct: 32.0,
+        mean_saving_usd: 0.45, baseline_mean_usd: 1.62, memory_mean_usd: 1.17,
+        context_aggregate_pct: 55.0, primer_usd: 1.125, primer_payback_prs: 2.5,
+        worst_pr: { pr_ordinal: 16, pr_id: "SYNTHETIC#0", saving_pct: -8.0, saving_usd: -0.07 },
+        best_pr: { pr_ordinal: 8, pr_id: "SYNTHETIC#1", saving_pct: 64.0, saving_usd: 0.75 }
+      }
+    }
   },
   quality_gold: {
     baseline: {

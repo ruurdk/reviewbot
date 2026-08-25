@@ -89,3 +89,33 @@ having no `"warning"` variant, `Switch` using `onCheckedChange` -- and `Badge`,
 which takes a `label` string and **silently renders nothing** when handed
 children, which is how the run id and config fingerprint disappeared from the
 header.
+
+## Publishing more than one run
+
+`public/runs.json` is a manifest: `{runs: [{id, label, note, url,
+config_fingerprint}]}`. The page loads it, fetches one report per entry, and
+renders every run against the no-memory baseline on one scale. With no manifest
+it falls back to `report.json`, and with no run at all to the synthetic fixture
+— so a single-run checkout still works.
+
+`note` is the one line shown under the comparison chart explaining what differs
+between the runs. It lives in the manifest rather than in JSX so it cannot drift
+from what was actually executed, and the smoke test fails if it is empty.
+
+**The comparison chart plots saving, not absolute cost, and that is forced by
+the data.** Each run carries its own baseline, and the baselines are not the
+same number: they read byte-identical context (3,890,269 tokens) but bill
+differently ($32.67 against $33.54) because model output is not deterministic.
+Drawing one run's memory line against the other's baseline would mix controls;
+nominating one baseline to stand for both would discard the other. Differencing
+within each run avoids both, and makes zero the no-memory line.
+
+**Both runs share one hue, separated by dash pattern.** Every single-hue pair
+was measured and every one fails the dark-mode lightness band
+(primary200+primary600 has CVD ΔE 27.8 but L 0.719/0.437, outside 0.48–0.67).
+The only pair passing both modes is `discovery400 + primary400`, already spent
+on baseline-vs-memory — and reusing magenta here would make it mean "baseline"
+on one chart and "run 1" on another. Redis's remaining ramps are status
+families and are reserved. So the runs keep the *memory* hue, which is also
+what they are, and `RUN_DASH` separates them; `npm run validate-colors` grades
+that single colour on its own.

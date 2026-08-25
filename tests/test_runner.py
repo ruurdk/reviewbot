@@ -12,7 +12,7 @@ from reviewbot.claude import ClaudeClient
 from reviewbot.config import ConfoundError, ModelConfig
 from reviewbot.dataset import Sequence, SequenceEntry
 from reviewbot.github import FileChange, PRStore, PullRequest
-from reviewbot.memory import AgentMemoryClient
+from reviewbot.memory import AgentMemoryClient, NotVisible
 from reviewbot.quality import GoldItem, GoldLabels
 from reviewbot.repo import DictSourceProvider
 from reviewbot.runner import (
@@ -123,6 +123,20 @@ def build(tmp, *, with_gold=True, n=3):
     return runner, ledger, service, (baseline_fake, memory_fake)
 
 
+def harness_manifest(
+    *, retrieval_limits=None, dedupe_writes=None, agents=("baseline", "memory")
+):
+    """A manifest from a built runner, without executing the sequence."""
+    with tempfile.TemporaryDirectory() as tmp:
+        runner, _, _, _ = build(tmp)
+        if retrieval_limits is not None:
+            runner.agents["memory"].retrieval_limits = dict(retrieval_limits)
+        if dedupe_writes is not None:
+            runner.agents["memory"].dedupe_writes = dedupe_writes
+        runner.agents = {k: v for k, v in runner.agents.items() if k in agents}
+        return runner.write_manifest()
+
+
 class TestSequenceRun(unittest.TestCase):
     def test_full_run_produces_a_complete_report(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -226,6 +240,17 @@ class TestReplayPageContract(unittest.TestCase):
     )
     # AccountingTable byNumber lookup + App.jsx PR count
     ROW_FIELDS = ("ordinal", "pr_number", "title", "n_files", "diff_size", "human_comments")
+    # contract.js marginalFor -> the four KPI tiles and the caveat line
+    MARGINAL_FIELDS = (
+        "n_prs",
+        "aggregate_pct",
+        "median_pct",
+        "mean_saving_usd",
+        "context_aggregate_pct",
+        "primer_usd",
+        "primer_payback_prs",
+        "worst_pr",
+    )
 
     def test_report_carries_every_field_the_page_reads(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -245,6 +270,16 @@ class TestReplayPageContract(unittest.TestCase):
         # is what makes the cumulative curve start above the baseline's.
         primer = [r for r in payload["per_pr"] if r["pr_ordinal"] == 0]
         self.assertEqual([r["agent"] for r in primer], ["memory"])
+
+        # contract.js marginalFor() -> the page's lead KPI. A missing field here
+        # renders "--" where the headline should be, which looks like a working
+        # page.
+        marginal = payload["accounting"]["marginal"]
+        self.assertEqual(set(marginal), {"as_measured", "production_equivalent"})
+        for regime in marginal.values():
+            for field_name in self.MARGINAL_FIELDS:
+                self.assertIn(field_name, regime)
+            self.assertIn("saving_pct", regime["worst_pr"])
         self.assertIn("prime", primer[0]["by_phase"])
 
     def test_per_pr_rows_carry_what_each_agent_read(self):
@@ -418,3 +453,125 @@ class TestAbandonedAttempts(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRetrievalManifest(unittest.TestCase):
+    """The retrieval shape is an experimental variable with no other trace.
+
+    ModelConfig.fingerprint() does not cover it, and the ledger's search rows
+    record the limit that was used -- which for a pooled run and a split run
+    sharing a number look alike. Without the manifest, two runs differing only
+    in retrieval shape are indistinguishable from their artifacts.
+    """
+
+    def test_a_pooled_run_says_so_and_names_its_budget(self):
+        manifest = harness_manifest()
+        self.assertEqual(manifest["retrieval"]["shape"], "pooled")
+        self.assertEqual(manifest["retrieval"]["total_budget"], 20)
+
+    def test_a_split_run_records_the_per_type_budgets(self):
+        manifest = harness_manifest(
+            retrieval_limits={"repo_convention": 10, "review_finding": 10}
+        )
+        self.assertEqual(manifest["retrieval"]["shape"], "split")
+        self.assertEqual(
+            manifest["retrieval"]["limits"],
+            {"repo_convention": 10, "review_finding": 10},
+        )
+        self.assertEqual(manifest["retrieval"]["total_budget"], 20)
+
+    def test_the_two_shapes_are_distinguishable_at_equal_total_budget(self):
+        # The whole point: same 20 records retrieved, different shape.
+        pooled = harness_manifest()
+        split = harness_manifest(
+            retrieval_limits={"repo_convention": 10, "review_finding": 10}
+        )
+        self.assertEqual(pooled["config_fingerprint"], split["config_fingerprint"])
+        self.assertEqual(
+            pooled["retrieval"]["total_budget"], split["retrieval"]["total_budget"]
+        )
+        self.assertNotEqual(pooled["retrieval"], split["retrieval"])
+
+    def test_a_baseline_only_run_has_no_retrieval_shape(self):
+        manifest = harness_manifest(agents=("baseline",))
+        self.assertEqual(manifest["retrieval"]["shape"], "none")
+
+
+class TestWritePolicyManifest(unittest.TestCase):
+    """Dedup changes the finding *id scheme*, so two runs on either side of it
+    produce stores that cannot be compared record-for-record. Like the
+    retrieval shape, it is invisible to ModelConfig.fingerprint()."""
+
+    def test_append_only_is_recorded_with_its_id_scheme(self):
+        writes = harness_manifest(dedupe_writes=False)["writes"]
+        self.assertEqual(writes["shape"], "append-only")
+        self.assertFalse(writes["dedupe"])
+        self.assertIn("{ordinal}", writes["id_scheme"])
+
+    def test_dedupe_is_recorded_with_its_id_scheme(self):
+        writes = harness_manifest(dedupe_writes=True)["writes"]
+        self.assertEqual(writes["shape"], "dedupe")
+        self.assertTrue(writes["dedupe"])
+        self.assertNotIn("{ordinal}", writes["id_scheme"])
+
+    def test_the_two_are_distinguishable_at_an_identical_fingerprint(self):
+        append = harness_manifest(dedupe_writes=False)
+        dedupe = harness_manifest(dedupe_writes=True)
+        self.assertEqual(append["config_fingerprint"], dedupe["config_fingerprint"])
+        self.assertNotEqual(append["writes"], dedupe["writes"])
+
+
+class TestPrimerCheckpoint(unittest.TestCase):
+    """The primer is the most expensive thing the memory agent does, so a
+    failure *after* the store was written must not cost it twice."""
+
+    def test_the_marker_carries_the_records_not_just_their_ids(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runner, _, _, _ = build(tmp)
+            runner.prime()
+            marker = json.loads((pathlib.Path(tmp) / "run/primed.json").read_text())
+            self.assertTrue(marker["records"])
+            self.assertEqual(len(marker["records"]), len(marker["ids"]))
+            # Enough to re-create without a model call: that is the point.
+            for rec in marker["records"]:
+                self.assertTrue(rec["id"] and rec["text"] and rec["memory_type"])
+
+    def test_the_marker_is_written_before_the_visibility_wait(self):
+        """A dropped write raises from the wait. If the marker were written
+        after, the primer's model calls would be lost with it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            runner, _, service, _ = build(tmp)
+            memory = runner.agents["memory"]
+            # Force every write to be dropped so the wait cannot succeed.
+            original = service._create
+
+            def drop_everything(payload):
+                body = original(payload)
+                for rec in payload["memories"]:
+                    service.records.pop(rec["id"], None)
+                return body
+
+            service._create = drop_everything
+            memory.memory.wait_for_visibility = lambda *a, **k: (_ for _ in ()).throw(
+                NotVisible("simulated drop")
+            )
+            with self.assertRaises(NotVisible):
+                runner.prime()
+            marker = pathlib.Path(tmp) / "run/primed.json"
+            self.assertTrue(marker.exists(), "primer spend was not checkpointed")
+
+    def test_a_resume_repairs_a_dropped_record_without_a_model_call(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runner, _, service, (_, memory_fake) = build(tmp)
+            runner.prime()
+            calls_after_prime = memory_fake.calls
+            # Simulate the live failure: one primed record vanished from the
+            # store while the marker still claims it.
+            victim = sorted(service.records)[0]
+            service.records.pop(victim)
+            runner2, _, service2, (_, fake2) = build(tmp)
+            # Same run dir, so the marker is found; point it at the same store.
+            runner2.agents["memory"].memory = runner.agents["memory"].memory
+            self.assertEqual(runner2.prime(), 0)  # no re-priming
+            self.assertIn(victim, service.records)  # repaired
+            self.assertEqual(memory_fake.calls, calls_after_prime)  # no model call

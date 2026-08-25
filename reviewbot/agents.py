@@ -21,10 +21,12 @@ from typing import Any, Sequence
 from .claude import ClaudeClient, Tags
 from .github import PullRequest
 from .memory import (
+    MEMORY_TYPES,
     REPO_CONVENTION,
     REVIEW_FINDING,
     AgentMemoryClient,
     Memory,
+    decode_ordinal_attr,
     memory_id,
     module_topics,
     resolve_modules,
@@ -198,19 +200,28 @@ class MemoryAgent:
         *,
         conventions: dict[str, str],
         retrieval_limit: int = 20,
+        retrieval_limits: dict[str, int] | None = None,
         similarity_threshold: float | None = None,
         distill_writes: bool = True,
+        dedupe_writes: bool = False,
         max_patch_chars: int | None = None,
     ):
         self.client = client
         self.memory = memory
         self.conventions = conventions
         self.retrieval_limit = retrieval_limit
+        # Per-memory-type budgets. None keeps the pooled single search that
+        # run-1 used, so that run stays reproducible; see retrieve().
+        self.retrieval_limits = dict(retrieval_limits) if retrieval_limits else None
         self.similarity_threshold = similarity_threshold
         # When False the write phase persists findings verbatim and costs zero
         # model tokens. Distillation costs tokens but produces memories that are
         # reusable rather than diff-specific; either way the cost is measured.
         self.distill_writes = distill_writes
+        # Off by default so run-1 reproduces: dedup changes the finding id
+        # scheme, and reproducing an append-only store means reproducing the
+        # ordinal-suffixed ids it wrote.
+        self.dedupe_writes = dedupe_writes
         self.max_patch_chars = max_patch_chars
         self.primed_ids: list[str] = []
 
@@ -222,6 +233,7 @@ class MemoryAgent:
         *,
         pr_id: str = "prime",
         docs: dict[str, str] | None = None,
+        after_create: Any = None,
     ) -> list[Memory]:
         """One distillation pass over the frozen repo (spec 4e).
 
@@ -264,9 +276,17 @@ class MemoryAgent:
                     )
                 )
         if records:
-            created = self.memory.create(records, Tags(self.name, pr_id, 0, "prime"))
-            self.memory.wait_for_visibility(created, tags=Tags(self.name, pr_id, 0, "prime"))
+            tags = Tags(self.name, pr_id, 0, "prime")
+            created = self.memory.create(records, tags)
             self.primed_ids.extend(created)
+            # Checkpoint before the visibility wait, not after. The wait can
+            # fail on a service-side drop (see wait_for_visibility), and the
+            # model calls above are the single most expensive thing the memory
+            # agent does -- losing them to a failure *after* the store was
+            # written means paying for them twice.
+            if after_create is not None:
+                after_create(records)
+            self.memory.wait_for_visibility(created, tags=tags, records=records)
         return records
 
     # -- retrieve ---------------------------------------------------------
@@ -280,19 +300,50 @@ class MemoryAgent:
         modules = ", ".join(pr.modules)
         return f"{pr.title}. Files changed: {modules}"
 
-    def retrieve(self, pr: PullRequest, ordinal: int) -> tuple[list[Memory], int]:
-        tags = Tags(self.name, pr.pr_id, ordinal, "retrieve")
+    def _search(
+        self, pr: PullRequest, tags: Tags, memory_types: Sequence[str], limit: int
+    ) -> list[Memory]:
         found, _ = self.memory.search(
             self.query_for(pr),
             filter=scoped_filter(
                 self.memory.namespace,
-                memory_types=[REPO_CONVENTION, REVIEW_FINDING],
+                memory_types=list(memory_types),
                 modules=pr.modules,
             ),
-            limit=self.retrieval_limit,
+            limit=limit,
             similarity_threshold=self.similarity_threshold,
             tags=tags,
         )
+        return found
+
+    def retrieve(self, pr: PullRequest, ordinal: int) -> tuple[list[Memory], int]:
+        """Pull the durable slice for this PR's modules.
+
+        Two shapes, and which one is in force is a real experimental variable:
+
+        **Pooled** (`retrieval_limits=None`, what run-1 did) -- one search over
+        both memory types sharing one budget. Simple, and it is what makes run-1
+        reproducible, but the budget saturated at the limit on *every* PR from
+        the first one onward, so semantic conventions and episodic findings
+        compete for the same fixed slots while only the finding count grows.
+
+        **Split** -- one search per memory type, each with its own budget, so a
+        growing pile of findings cannot squeeze conventions out (or vice versa)
+        and the two are independently tunable. Costs one extra round trip and
+        zero model tokens: searches are `billable=False`, so this changes the
+        retrieval mix without touching the cost comparison.
+        """
+        tags = Tags(self.name, pr.pr_id, ordinal, "retrieve")
+        if self.retrieval_limits:
+            found: list[Memory] = []
+            for memory_type in MEMORY_TYPES:
+                limit = self.retrieval_limits.get(memory_type, 0)
+                if limit > 0:
+                    found.extend(self._search(pr, tags, [memory_type], limit))
+        else:
+            found = self._search(
+                pr, tags, [REPO_CONVENTION, REVIEW_FINDING], self.retrieval_limit
+            )
         injected = 0
         if found:
             block = prior_knowledge_block([(m.id, m.prompt_text) for m in found])
@@ -406,7 +457,17 @@ class MemoryAgent:
 
         records = [
             Memory(
-                id=memory_id("find", row["module"], row["topic"], str(ordinal)),
+                # With dedup on, the id drops the ordinal and so becomes a pure
+                # function of (module, topic) -- which makes it the dedup key,
+                # detectable with a GET instead of a fuzzy similarity search.
+                # With dedup off it keeps the ordinal, which is what makes every
+                # write an append; that is run-1's behaviour and reproducing it
+                # requires reproducing the id scheme.
+                id=(
+                    memory_id("find", row["module"], row["topic"])
+                    if self.dedupe_writes
+                    else memory_id("find", row["module"], row["topic"], str(ordinal))
+                ),
                 text=row["text"],
                 memory_type=REVIEW_FINDING,
                 namespace=self.memory.namespace,
@@ -443,6 +504,97 @@ class MemoryAgent:
             )
         if not records:
             return []
-        created = self.memory.create(records, tags)
-        self.memory.wait_for_visibility(created, tags=tags)
-        return created
+        if not self.dedupe_writes:
+            created = self.memory.create(records, tags)
+            self.memory.wait_for_visibility(created, tags=tags)
+            return created
+        return self._write_deduped(records, ordinal, tags)
+
+    def _write_deduped(
+        self, records: list[Memory], ordinal: int, tags: Tags
+    ) -> list[str]:
+        """Merge a repeat finding into its existing record instead of appending.
+
+        Why this is a correctness fix and not an efficiency one: an append-only
+        store is what turns a wrong belief into a *growing* one. Run-1 restated
+        one false convention 11 times across 9 PRs, and each restatement became
+        another record competing for the same fixed retrieval window -- the
+        model reads the claim, repeats it, and the write phase persists it again
+        under a new id. Collapsing on (module, topic) breaks that loop.
+
+        What this does NOT do is make a false claim less likely to be repeated;
+        it only stops the copies accumulating. Suppressing a refuted claim is
+        `review_policy`'s job (spec 4d), which is still unbuilt.
+
+        Recurrence becomes explicit rather than implicit in a copy count:
+        `occurrences` and `last_pr_ordinal` are recorded, while `pr_ordinal`
+        keeps its first-seen value so chronology still means what it says.
+        """
+        # Same-PR collisions first: two findings can distill to one
+        # (module, topic), and two records with one id in a single bulk create
+        # is not a shape the service promises anything about.
+        unique: dict[str, Memory] = {}
+        collapsed_in_batch = 0
+        for rec in records:
+            if rec.id in unique:
+                collapsed_in_batch += 1
+                continue
+            unique[rec.id] = rec
+
+        fresh: list[Memory] = []
+        merged: list[str] = []
+        for rec in unique.values():
+            existing = self.memory.get(rec.id)
+            if existing is None:
+                fresh.append(rec)
+                continue
+            attrs = dict(existing.attributes or {})
+            # Decoded, not read raw: attributes come back as strings, so a raw
+            # read would put "001" where an int belongs and quietly poison any
+            # arithmetic downstream.
+            first_seen = decode_ordinal_attr(attrs.get("pr_ordinal"), ordinal)
+            seen = decode_ordinal_attr(attrs.get("occurrences"), 1) or 1
+            self.memory.patch_fields(
+                rec.id,
+                memory_type=rec.memory_type,
+                # The newest distillation is the most current understanding.
+                # Synthesizing a combined narrative would be a model call --
+                # that is consolidation, the separate and output-costing option.
+                text=rec.text,
+                # Union, not replace: a recurrence in a *different* file must
+                # stay retrievable from both, and replacing topics would make
+                # the earlier module unreachable.
+                topics=sorted(set(existing.topics or []) | set(rec.topics)),
+                attributes={
+                    **attrs,
+                    **rec.attributes,
+                    "pr_ordinal": first_seen,
+                    "last_pr_ordinal": ordinal,
+                    "occurrences": seen + 1,
+                },
+                tags=tags,
+            )
+            merged.append(rec.id)
+
+        created = self.memory.create(fresh, tags) if fresh else []
+        # Only new records need a visibility wait; a patch updates a record that
+        # is already searchable.
+        if created:
+            self.memory.wait_for_visibility(created, tags=tags)
+        if merged or collapsed_in_batch:
+            self.memory.log_op(
+                tags,
+                "measure",
+                0,
+                returned=len(merged),
+                notes={
+                    "deduped_writes": len(merged),
+                    "collapsed_within_pr": collapsed_in_batch,
+                    "why": (
+                        "a repeat finding updated its existing record instead of "
+                        "appending a copy that would compete for the same "
+                        "retrieval slots"
+                    ),
+                },
+            )
+        return created + merged

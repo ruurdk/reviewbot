@@ -92,6 +92,24 @@ def ordinal_attr(value: int) -> str:
     return f"{int(value):0{ORDINAL_WIDTH}d}"
 
 
+def decode_ordinal_attr(value: Any, default: int | None = None) -> int | None:
+    """Read back what `ordinal_attr` wrote.
+
+    Every attribute is stored as a *string* (the store validates against a
+    registered field type), so a value that went in as `4` comes back as
+    `"004"`. Re-encoding that string happens to be a no-op, which is worse than
+    it sounds: it means an arithmetic read of the round-tripped value silently
+    gets a str. Decoding explicitly is what makes `occurrences` and first-seen
+    tracking safe to compute on.
+    """
+    if value is None or value == "":
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def encode_attributes(attrs: dict[str, Any]) -> dict[str, Any]:
     """Coerce scalar attribute values to str.
 
@@ -120,6 +138,12 @@ REPO_CONVENTION = "repo_convention"
 REVIEW_FINDING = "review_finding"
 REVIEW_POLICY = "review_policy"
 MEMORY_TYPES = (REPO_CONVENTION, REVIEW_FINDING, REVIEW_POLICY)
+
+# Every id this harness mints is prefixed with its memory type's tag, because a
+# search response omits `attributes` and carries no memoryType field -- the id
+# is the only self-describing thing a retrieved record has. `memory_type_of()`
+# is what lets retrieval be attributed by type after the fact.
+ID_PREFIX = {REPO_CONVENTION: "conv", REVIEW_FINDING: "find", REVIEW_POLICY: "pol"}
 
 Transport = Callable[[str, str, dict, bytes | None, float], tuple[int, dict, bytes]]
 
@@ -170,6 +194,54 @@ def memory_id(*parts: str) -> str:
     digest = hashlib.sha256("|".join(parts).encode()).hexdigest()[:12]
     keep = MAX_ID_LEN - len(digest) - 1
     return f"{joined[:keep].rstrip('-')}-{digest}"
+
+
+def parse_retrieval_split(spec: str) -> dict[str, int]:
+    """`"conv=10,find=10"` -> per-memory-type retrieval budgets.
+
+    Accepts either the full memory type (`repo_convention`) or its id prefix
+    (`conv`). Rejects an unknown name rather than ignoring it: the service
+    silently drops unknown fields from a search body, so a typo that reached
+    the wire would return 200 with a quietly wrong mix.
+    """
+    limits: dict[str, int] = {}
+    for part in spec.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        name, sep, raw = part.partition("=")
+        if not sep:
+            raise ValueError(f"retrieval split needs type=limit pairs, got {part!r}")
+        name = name.strip()
+        resolved = name if name in MEMORY_TYPES else None
+        if resolved is None:
+            resolved = next((t for t, p in ID_PREFIX.items() if p == name), None)
+        if resolved is None:
+            raise ValueError(
+                f"unknown memory type {name!r}; expected one of "
+                f"{', '.join(MEMORY_TYPES)} or {', '.join(sorted(ID_PREFIX.values()))}"
+            )
+        limit = int(raw)
+        if not 1 <= limit <= MAX_SEARCH_LIMIT:
+            raise ValueError(f"limit for {resolved} must be 1..{MAX_SEARCH_LIMIT}, got {limit}")
+        limits[resolved] = limit
+    if not limits:
+        raise ValueError("retrieval split is empty")
+    return limits
+
+
+def memory_type_of(value: str) -> str | None:
+    """Which memory type an id belongs to, or None if it wasn't minted here.
+
+    Reads the `ID_PREFIX` tag rather than asking the service: a search response
+    has no memoryType field, so classifying a retrieved record any other way
+    would cost one GET per record per PR.
+    """
+    head = value.split("-", 1)[0]
+    for memory_type, prefix in ID_PREFIX.items():
+        if head == prefix:
+            return memory_type
+    return None
 
 
 def validate_id(value: str) -> str:
@@ -452,6 +524,7 @@ class AgentMemoryClient:
         injected: int | None = None,
         limit: int | None = None,
         threshold: float | None = None,
+        ids: Sequence[str] | None = None,
         notes: dict[str, Any] | None = None,
     ) -> None:
         if not (self.ledger and tags):
@@ -470,6 +543,7 @@ class AgentMemoryClient:
                 injected_tokens=injected,
                 search_limit=limit,
                 similarity_threshold=threshold,
+                retrieved_ids=list(ids) if ids is not None else None,
                 notes=dict(notes or {}),
             )
         )
@@ -534,6 +608,11 @@ class AgentMemoryClient:
             returned=len(items),
             limit=limit,
             threshold=similarity_threshold,
+            # Ids, not just a count. Search responses carry no relevance score
+            # and omit `attributes`, so the id is the only thing a retrieved
+            # record tells us about itself -- and the id prefix is what makes
+            # retrieval attributable by memory type after the fact.
+            ids=[m.id for m in items],
         )
         return items, body.get("nextPageToken")
 
@@ -584,21 +663,9 @@ class AgentMemoryClient:
             deleted += len(batch)
         return deleted
 
-    def wait_for_visibility(
-        self,
-        memory_ids: Sequence[str],
-        *,
-        timeout: float = 30.0,
-        interval: float = 0.5,
-        tags: Tags | None = None,
-    ) -> float:
-        """Poll until every written id is readable back.
-
-        Returns seconds waited. Exclude this from the latency metric -- it is an
-        artefact of replaying a sequence with no gaps between PRs, not a cost a
-        real reviewer pays (spec: wait for write visibility between PRs).
-        """
-        pending = {validate_id(m) for m in memory_ids}
+    def _poll_visible(
+        self, pending: set[str], timeout: float, interval: float
+    ) -> tuple[set[str], float]:
         started = time.monotonic()
         while pending and (time.monotonic() - started) < timeout:
             for mid in sorted(pending):
@@ -606,13 +673,66 @@ class AgentMemoryClient:
                     pending.discard(mid)
             if pending:
                 time.sleep(interval)
-        waited = time.monotonic() - started
+        return pending, time.monotonic() - started
+
+    def wait_for_visibility(
+        self,
+        memory_ids: Sequence[str],
+        *,
+        timeout: float = 30.0,
+        interval: float = 0.5,
+        tags: Tags | None = None,
+        records: Sequence["Memory"] | None = None,
+    ) -> float:
+        """Poll until every written id is readable back.
+
+        Returns seconds waited. Exclude this from the latency metric -- it is an
+        artefact of replaying a sequence with no gaps between PRs, not a cost a
+        real reviewer pays (spec: wait for write visibility between PRs).
+
+        `records` enables one re-create of whatever is still missing when the
+        first wait expires, and it exists because of a failure mode the three
+        constraints in the module docstring do not cover: **a bulk create can
+        report an id in `created`, with `errors` empty, and never store it.**
+        Observed 2026-08-25 -- 120 ids claimed, 119 in the store, and the
+        missing one still absent minutes later while that exact id wrote and
+        read back instantly in a probe namespace. So this is not the eventual
+        consistency the rest of this method is about; no amount of extra
+        waiting fixes it. Re-creating is safe because ids are deterministic and
+        creates are idempotent, and it is free because memory ops are not
+        billed. Without the retry, a run dies after paying for the primer.
+        """
+        pending = {validate_id(m) for m in memory_ids}
+        pending, waited = self._poll_visible(pending, timeout, interval)
+        recreated: list[str] = []
+        if pending and records:
+            by_id = {r.id: r for r in records}
+            retry = [by_id[mid] for mid in sorted(pending) if mid in by_id]
+            if retry:
+                self.create(retry, tags)
+                recreated = [r.id for r in retry]
+                pending, extra = self._poll_visible(pending, timeout, interval)
+                waited += extra
         self.log_op(
             tags,
             "wait",
             int(waited * 1000),
             returned=len(memory_ids) - len(pending),
-            notes={"excluded_from_latency": True, "still_pending": sorted(pending)},
+            notes={
+                "excluded_from_latency": True,
+                "still_pending": sorted(pending),
+                **(
+                    {
+                        "recreated": recreated,
+                        "why": (
+                            "the bulk create reported these ids in `created` with no "
+                            "error but never stored them"
+                        ),
+                    }
+                    if recreated
+                    else {}
+                ),
+            },
         )
         if pending:
             raise NotVisible(

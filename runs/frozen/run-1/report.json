@@ -4322,24 +4322,8 @@
       "primer_usd_per_pr": 0.11293184210526318
     },
     "cache_integrity": [
-      "baseline: prefix b81ed208c7b9f465 seen at seq 42 and again at seq 49, but cache_read_input_tokens is 0 -- the prefix is not byte-stable",
-      "baseline: prefix b81ed208c7b9f465 seen at seq 49 and again at seq 56, but cache_read_input_tokens is 0 -- the prefix is not byte-stable",
-      "baseline: prefix b81ed208c7b9f465 seen at seq 67 and again at seq 74, but cache_read_input_tokens is 0 -- the prefix is not byte-stable",
-      "baseline: prefix b81ed208c7b9f465 seen at seq 88 and again at seq 95, but cache_read_input_tokens is 0 -- the prefix is not byte-stable",
-      "baseline: prefix b81ed208c7b9f465 seen at seq 95 and again at seq 102, but cache_read_input_tokens is 0 -- the prefix is not byte-stable",
-      "baseline: prefix b81ed208c7b9f465 seen at seq 102 and again at seq 109, but cache_read_input_tokens is 0 -- the prefix is not byte-stable",
-      "baseline: prefix b81ed208c7b9f465 seen at seq 109 and again at seq 116, but cache_read_input_tokens is 0 -- the prefix is not byte-stable",
-      "baseline: prefix b81ed208c7b9f465 seen at seq 116 and again at seq 123, but cache_read_input_tokens is 0 -- the prefix is not byte-stable",
-      "baseline: prefix b81ed208c7b9f465 seen at seq 123 and again at seq 132, but cache_read_input_tokens is 0 -- the prefix is not byte-stable",
-      "baseline: prefix b81ed208c7b9f465 seen at seq 132 and again at seq 139, but cache_read_input_tokens is 0 -- the prefix is not byte-stable",
-      "memory: prefix b81ed208c7b9f465 seen at seq 10 and again at seq 17, but cache_read_input_tokens is 0 -- the prefix is not byte-stable",
-      "memory: prefix b81ed208c7b9f465 seen at seq 45 and again at seq 52, but cache_read_input_tokens is 0 -- the prefix is not byte-stable",
-      "memory: prefix b81ed208c7b9f465 seen at seq 52 and again at seq 59, but cache_read_input_tokens is 0 -- the prefix is not byte-stable",
-      "memory: prefix b81ed208c7b9f465 seen at seq 84 and again at seq 91, but cache_read_input_tokens is 0 -- the prefix is not byte-stable",
-      "memory: prefix b81ed208c7b9f465 seen at seq 91 and again at seq 98, but cache_read_input_tokens is 0 -- the prefix is not byte-stable",
-      "memory: prefix b81ed208c7b9f465 seen at seq 105 and again at seq 112, but cache_read_input_tokens is 0 -- the prefix is not byte-stable",
-      "memory: prefix b81ed208c7b9f465 seen at seq 119 and again at seq 128, but cache_read_input_tokens is 0 -- the prefix is not byte-stable",
-      "memory: prefix b81ed208c7b9f465 seen at seq 128 and again at seq 135, but cache_read_input_tokens is 0 -- the prefix is not byte-stable"
+      "baseline: 10 repeat(s) of a byte-stable prefix missed the cache because the entry had expired -- the calls are further apart than the TTL. Expected at this review latency; it is why caching is inert here (spec 7e), not a prefix bug.",
+      "memory: 8 repeat(s) of a byte-stable prefix missed the cache because the entry had expired -- the calls are further apart than the TTL. Expected at this review latency; it is why caching is inert here (spec 7e), not a prefix bug."
     ],
     "abandoned": {
       "calls": 0,
@@ -4348,6 +4332,487 @@
       "seqs": []
     },
     "shared_prefix_freeriding": {},
+    "retrieval_mix": {
+      "per_pr": {},
+      "totals": {},
+      "unknown": 0,
+      "saturated_prs": [],
+      "instrumented": false
+    },
+    "marginal": {
+      "as_measured": {
+        "regime": "as_measured",
+        "n_prs": 19,
+        "aggregate_pct": 27.727864917419783,
+        "mean_pct": 31.405720835433097,
+        "median_pct": 34.385682043210444,
+        "mean_saving_usd": 0.47677810526315784,
+        "baseline_mean_usd": 1.7194908684210528,
+        "memory_mean_usd": 1.242712763157895,
+        "context_aggregate_pct": 59.38985196139393,
+        "primer_usd": 2.1457050000000004,
+        "primer_payback_prs": 4.50042687848612,
+        "worst_pr": {
+          "pr_ordinal": 16,
+          "pr_id": "redis/redis-py#4131",
+          "saving_pct": -46.78037946361163,
+          "saving_usd": -0.425995
+        },
+        "best_pr": {
+          "pr_ordinal": 8,
+          "pr_id": "redis/redis-py#4059",
+          "saving_pct": 79.715220520489,
+          "saving_usd": 0.5416155
+        },
+        "per_pr": [
+          {
+            "pr_ordinal": 1,
+            "pr_id": "redis/redis-py#4025",
+            "baseline_usd": 2.9312075,
+            "memory_usd": 2.3413875,
+            "saving_usd": 0.58982,
+            "saving_pct": 20.12208279352451,
+            "baseline_context": 383705,
+            "memory_context": 237831,
+            "context_pct": 38.01722677577827
+          },
+          {
+            "pr_ordinal": 2,
+            "pr_id": "redis/redis-py#4031",
+            "baseline_usd": 1.2727130000000002,
+            "memory_usd": 0.8132325000000001,
+            "saving_usd": 0.45948050000000007,
+            "saving_pct": 36.102444148837954,
+            "baseline_context": 162692,
+            "memory_context": 29065,
+            "context_pct": 82.13495439234873
+          },
+          {
+            "pr_ordinal": 3,
+            "pr_id": "redis/redis-py#4030",
+            "baseline_usd": 0.7814780000000001,
+            "memory_usd": 0.389618,
+            "saving_usd": 0.3918600000000001,
+            "saving_pct": 50.14344613667947,
+            "baseline_context": 107285,
+            "memory_context": 21468,
+            "context_pct": 79.98974693573193
+          },
+          {
+            "pr_ordinal": 4,
+            "pr_id": "redis/redis-py#4037",
+            "baseline_usd": 1.211693,
+            "memory_usd": 0.6407680000000001,
+            "saving_usd": 0.5709249999999998,
+            "saving_pct": 47.11795809664658,
+            "baseline_context": 153033,
+            "memory_context": 22843,
+            "context_pct": 85.07315415629309
+          },
+          {
+            "pr_ordinal": 5,
+            "pr_id": "redis/redis-py#4038",
+            "baseline_usd": 0.9555480000000001,
+            "memory_usd": 0.562338,
+            "saving_usd": 0.39321000000000006,
+            "saving_pct": 41.15020909467656,
+            "baseline_context": 123744,
+            "memory_context": 24517,
+            "context_pct": 80.18732221360227
+          },
+          {
+            "pr_ordinal": 6,
+            "pr_id": "redis/redis-py#4044",
+            "baseline_usd": 1.8085125,
+            "memory_usd": 1.391613,
+            "saving_usd": 0.4168995,
+            "saving_pct": 23.052066269931778,
+            "baseline_context": 193076,
+            "memory_context": 66642,
+            "context_pct": 65.48405809111438
+          },
+          {
+            "pr_ordinal": 7,
+            "pr_id": "redis/redis-py#4052",
+            "baseline_usd": 3.5690325000000005,
+            "memory_usd": 2.9333625000000003,
+            "saving_usd": 0.6356700000000002,
+            "saving_pct": 17.81070920480551,
+            "baseline_context": 503525,
+            "memory_context": 350406,
+            "context_pct": 30.409413633881137
+          },
+          {
+            "pr_ordinal": 8,
+            "pr_id": "redis/redis-py#4059",
+            "baseline_usd": 0.679438,
+            "memory_usd": 0.13782250000000001,
+            "saving_usd": 0.5416155,
+            "saving_pct": 79.715220520489,
+            "baseline_context": 128962,
+            "memory_context": 17103,
+            "context_pct": 86.73795381585273
+          },
+          {
+            "pr_ordinal": 9,
+            "pr_id": "redis/redis-py#4054",
+            "baseline_usd": 1.086858,
+            "memory_usd": 0.659073,
+            "saving_usd": 0.4277850000000001,
+            "saving_pct": 39.35978757114545,
+            "baseline_context": 156571,
+            "memory_context": 26204,
+            "context_pct": 83.26382280243467
+          },
+          {
+            "pr_ordinal": 10,
+            "pr_id": "redis/redis-py#4067",
+            "baseline_usd": 1.4336525,
+            "memory_usd": 0.802913,
+            "saving_usd": 0.6307395,
+            "saving_pct": 43.99528477089113,
+            "baseline_context": 171374,
+            "memory_context": 23827,
+            "context_pct": 86.09649071621132
+          },
+          {
+            "pr_ordinal": 11,
+            "pr_id": "redis/redis-py#4055",
+            "baseline_usd": 1.076443,
+            "memory_usd": 0.5912980000000001,
+            "saving_usd": 0.48514499999999994,
+            "saving_pct": 45.06926980806229,
+            "baseline_context": 164113,
+            "memory_context": 46129,
+            "context_pct": 71.89192812269594
+          },
+          {
+            "pr_ordinal": 12,
+            "pr_id": "redis/redis-py#4068",
+            "baseline_usd": 1.5955780000000002,
+            "memory_usd": 0.785598,
+            "saving_usd": 0.8099800000000001,
+            "saving_pct": 50.76404914081293,
+            "baseline_context": 166930,
+            "memory_context": 33369,
+            "context_pct": 80.0101839094231
+          },
+          {
+            "pr_ordinal": 13,
+            "pr_id": "redis/redis-py#4063",
+            "baseline_usd": 1.5629325,
+            "memory_usd": 1.0255075,
+            "saving_usd": 0.537425,
+            "saving_pct": 34.385682043210444,
+            "baseline_context": 160565,
+            "memory_context": 25475,
+            "context_pct": 84.1341512782985
+          },
+          {
+            "pr_ordinal": 14,
+            "pr_id": "redis/redis-py#4082",
+            "baseline_usd": 1.5492775,
+            "memory_usd": 1.0295575000000001,
+            "saving_usd": 0.51972,
+            "saving_pct": 33.545959326202045,
+            "baseline_context": 185254,
+            "memory_context": 57205,
+            "context_pct": 69.120774720114
+          },
+          {
+            "pr_ordinal": 15,
+            "pr_id": "redis/redis-py#4114",
+            "baseline_usd": 1.8961925000000002,
+            "memory_usd": 1.5679730000000003,
+            "saving_usd": 0.3282194999999999,
+            "saving_pct": 17.309397648181807,
+            "baseline_context": 208702,
+            "memory_context": 80134,
+            "context_pct": 61.60362622303572
+          },
+          {
+            "pr_ordinal": 16,
+            "pr_id": "redis/redis-py#4131",
+            "baseline_usd": 0.9106275,
+            "memory_usd": 1.3366225,
+            "saving_usd": -0.425995,
+            "saving_pct": -46.78037946361163,
+            "baseline_context": 52539,
+            "memory_context": 58393,
+            "context_pct": -11.14219912826662
+          },
+          {
+            "pr_ordinal": 17,
+            "pr_id": "redis/redis-py#4177",
+            "baseline_usd": 2.9657875000000002,
+            "memory_usd": 2.5306379999999997,
+            "saving_usd": 0.4351495000000005,
+            "saving_pct": 14.672308788138075,
+            "baseline_context": 335171,
+            "memory_context": 200137,
+            "context_pct": 40.28809175018125
+          },
+          {
+            "pr_ordinal": 18,
+            "pr_id": "redis/redis-py#4205",
+            "baseline_usd": 2.4652225000000003,
+            "memory_usd": 1.7913475,
+            "saving_usd": 0.6738750000000002,
+            "saving_pct": 27.335260813172038,
+            "baseline_context": 241688,
+            "memory_context": 113703,
+            "context_pct": 52.954635728708084
+          },
+          {
+            "pr_ordinal": 19,
+            "pr_id": "redis/redis-py#4272",
+            "baseline_usd": 2.9181325000000005,
+            "memory_usd": 2.2808725,
+            "saving_usd": 0.6372600000000004,
+            "saving_pct": 21.837939161432878,
+            "baseline_context": 291340,
+            "memory_context": 145393,
+            "context_pct": 50.095077915837166
+          }
+        ]
+      },
+      "production_equivalent": {
+        "regime": "production_equivalent",
+        "n_prs": 19,
+        "aggregate_pct": 27.320489835861085,
+        "mean_pct": 30.76598147947954,
+        "median_pct": 34.385682043210444,
+        "mean_saving_usd": 0.473431052631579,
+        "baseline_mean_usd": 1.7328790789473685,
+        "memory_mean_usd": 1.2594480263157894,
+        "context_aggregate_pct": 59.38985196139393,
+        "primer_usd": 2.1457050000000004,
+        "primer_payback_prs": 4.532243899239483,
+        "worst_pr": {
+          "pr_ordinal": 16,
+          "pr_id": "redis/redis-py#4131",
+          "saving_pct": -46.78037946361163,
+          "saving_usd": -0.425995
+        },
+        "best_pr": {
+          "pr_ordinal": 8,
+          "pr_id": "redis/redis-py#4059",
+          "saving_pct": 80.62208693329208,
+          "saving_usd": 0.5734124999999999
+        },
+        "per_pr": [
+          {
+            "pr_ordinal": 1,
+            "pr_id": "redis/redis-py#4025",
+            "baseline_usd": 2.9312075,
+            "memory_usd": 2.3413875,
+            "saving_usd": 0.58982,
+            "saving_pct": 20.12208279352451,
+            "baseline_context": 383705,
+            "memory_context": 237831,
+            "context_pct": 38.01722677577827
+          },
+          {
+            "pr_ordinal": 2,
+            "pr_id": "redis/redis-py#4031",
+            "baseline_usd": 1.30451,
+            "memory_usd": 0.8132325000000001,
+            "saving_usd": 0.4912774999999999,
+            "saving_pct": 37.65992594920697,
+            "baseline_context": 162692,
+            "memory_context": 29065,
+            "context_pct": 82.13495439234873
+          },
+          {
+            "pr_ordinal": 3,
+            "pr_id": "redis/redis-py#4030",
+            "baseline_usd": 0.8132750000000001,
+            "memory_usd": 0.421415,
+            "saving_usd": 0.3918600000000001,
+            "saving_pct": 48.18296394208601,
+            "baseline_context": 107285,
+            "memory_context": 21468,
+            "context_pct": 79.98974693573193
+          },
+          {
+            "pr_ordinal": 4,
+            "pr_id": "redis/redis-py#4037",
+            "baseline_usd": 1.24349,
+            "memory_usd": 0.6725650000000001,
+            "saving_usd": 0.5709249999999999,
+            "saving_pct": 45.91311550555291,
+            "baseline_context": 153033,
+            "memory_context": 22843,
+            "context_pct": 85.07315415629309
+          },
+          {
+            "pr_ordinal": 5,
+            "pr_id": "redis/redis-py#4038",
+            "baseline_usd": 0.9873450000000001,
+            "memory_usd": 0.5941350000000001,
+            "saving_usd": 0.39321000000000006,
+            "saving_pct": 39.82498518754843,
+            "baseline_context": 123744,
+            "memory_context": 24517,
+            "context_pct": 80.18732221360227
+          },
+          {
+            "pr_ordinal": 6,
+            "pr_id": "redis/redis-py#4044",
+            "baseline_usd": 1.8085125,
+            "memory_usd": 1.42341,
+            "saving_usd": 0.3851024999999999,
+            "saving_pct": 21.29388102100483,
+            "baseline_context": 193076,
+            "memory_context": 66642,
+            "context_pct": 65.48405809111438
+          },
+          {
+            "pr_ordinal": 7,
+            "pr_id": "redis/redis-py#4052",
+            "baseline_usd": 3.5690325000000005,
+            "memory_usd": 2.9333625000000003,
+            "saving_usd": 0.6356700000000002,
+            "saving_pct": 17.81070920480551,
+            "baseline_context": 503525,
+            "memory_context": 350406,
+            "context_pct": 30.409413633881137
+          },
+          {
+            "pr_ordinal": 8,
+            "pr_id": "redis/redis-py#4059",
+            "baseline_usd": 0.711235,
+            "memory_usd": 0.13782250000000001,
+            "saving_usd": 0.5734124999999999,
+            "saving_pct": 80.62208693329208,
+            "baseline_context": 128962,
+            "memory_context": 17103,
+            "context_pct": 86.73795381585273
+          },
+          {
+            "pr_ordinal": 9,
+            "pr_id": "redis/redis-py#4054",
+            "baseline_usd": 1.1186550000000002,
+            "memory_usd": 0.6908700000000001,
+            "saving_usd": 0.4277850000000001,
+            "saving_pct": 38.24101264464915,
+            "baseline_context": 156571,
+            "memory_context": 26204,
+            "context_pct": 83.26382280243467
+          },
+          {
+            "pr_ordinal": 10,
+            "pr_id": "redis/redis-py#4067",
+            "baseline_usd": 1.4336525,
+            "memory_usd": 0.8347100000000001,
+            "saving_usd": 0.5989424999999999,
+            "saving_pct": 41.77738329197626,
+            "baseline_context": 171374,
+            "memory_context": 23827,
+            "context_pct": 86.09649071621132
+          },
+          {
+            "pr_ordinal": 11,
+            "pr_id": "redis/redis-py#4055",
+            "baseline_usd": 1.10824,
+            "memory_usd": 0.623095,
+            "saving_usd": 0.48514499999999994,
+            "saving_pct": 43.77616761712264,
+            "baseline_context": 164113,
+            "memory_context": 46129,
+            "context_pct": 71.89192812269594
+          },
+          {
+            "pr_ordinal": 12,
+            "pr_id": "redis/redis-py#4068",
+            "baseline_usd": 1.627375,
+            "memory_usd": 0.817395,
+            "saving_usd": 0.80998,
+            "saving_pct": 49.772179122820496,
+            "baseline_context": 166930,
+            "memory_context": 33369,
+            "context_pct": 80.0101839094231
+          },
+          {
+            "pr_ordinal": 13,
+            "pr_id": "redis/redis-py#4063",
+            "baseline_usd": 1.5629325,
+            "memory_usd": 1.0255075,
+            "saving_usd": 0.537425,
+            "saving_pct": 34.385682043210444,
+            "baseline_context": 160565,
+            "memory_context": 25475,
+            "context_pct": 84.1341512782985
+          },
+          {
+            "pr_ordinal": 14,
+            "pr_id": "redis/redis-py#4082",
+            "baseline_usd": 1.5492775,
+            "memory_usd": 1.0295575000000001,
+            "saving_usd": 0.51972,
+            "saving_pct": 33.545959326202045,
+            "baseline_context": 185254,
+            "memory_context": 57205,
+            "context_pct": 69.120774720114
+          },
+          {
+            "pr_ordinal": 15,
+            "pr_id": "redis/redis-py#4114",
+            "baseline_usd": 1.8961925000000002,
+            "memory_usd": 1.5997700000000004,
+            "saving_usd": 0.2964224999999998,
+            "saving_pct": 15.632510939685702,
+            "baseline_context": 208702,
+            "memory_context": 80134,
+            "context_pct": 61.60362622303572
+          },
+          {
+            "pr_ordinal": 16,
+            "pr_id": "redis/redis-py#4131",
+            "baseline_usd": 0.9106275,
+            "memory_usd": 1.3366225,
+            "saving_usd": -0.425995,
+            "saving_pct": -46.78037946361163,
+            "baseline_context": 52539,
+            "memory_context": 58393,
+            "context_pct": -11.14219912826662
+          },
+          {
+            "pr_ordinal": 17,
+            "pr_id": "redis/redis-py#4177",
+            "baseline_usd": 2.9657875000000002,
+            "memory_usd": 2.562435,
+            "saving_usd": 0.40335250000000045,
+            "saving_pct": 13.600182076429967,
+            "baseline_context": 335171,
+            "memory_context": 200137,
+            "context_pct": 40.28809175018125
+          },
+          {
+            "pr_ordinal": 18,
+            "pr_id": "redis/redis-py#4205",
+            "baseline_usd": 2.4652225000000003,
+            "memory_usd": 1.7913475,
+            "saving_usd": 0.6738750000000002,
+            "saving_pct": 27.335260813172038,
+            "baseline_context": 241688,
+            "memory_context": 113703,
+            "context_pct": 52.954635728708084
+          },
+          {
+            "pr_ordinal": 19,
+            "pr_id": "redis/redis-py#4272",
+            "baseline_usd": 2.9181325000000005,
+            "memory_usd": 2.2808725,
+            "saving_usd": 0.6372600000000004,
+            "saving_pct": 21.837939161432878,
+            "baseline_context": 291340,
+            "memory_context": 145393,
+            "context_pct": 50.095077915837166
+          }
+        ]
+      }
+    },
     "phases": [
       "prime",
       "retrieve",

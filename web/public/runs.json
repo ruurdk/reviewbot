@@ -1,0 +1,18 @@
+{
+  "runs": [
+    {
+      "id": "run-1",
+      "label": "Run 1 \u2014 pooled retrieval",
+      "note": "One search over both memory types sharing a 20-record budget.",
+      "url": "report-run-1.json",
+      "config_fingerprint": "bd49dcd2fae0fe0d"
+    },
+    {
+      "id": "run-2",
+      "label": "Run 2 \u2014 split retrieval",
+      "note": "One search per memory type, 10 records each, so a growing pile of findings cannot crowd conventions out (or vice versa).",
+      "url": "report-run-2.json",
+      "config_fingerprint": "bd49dcd2fae0fe0d"
+    }
+  ]
+}

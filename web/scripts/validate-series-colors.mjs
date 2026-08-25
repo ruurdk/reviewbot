@@ -16,7 +16,7 @@ const VALIDATOR =
   "/tmp/claude-1000/bundled-skills/2.1.233/89ac679cda10bf23c2d9b74fdf854b18/dataviz/scripts/validate_palette.js";
 
 const { validate, validateOrdinal } = await import(VALIDATOR);
-const { SERIES, PHASE_RAMP, CACHE_RAMP, SURFACE } = await import("../src/theme/series.js");
+const { SERIES, PHASE_RAMP, CACHE_RAMP, RUN_STROKE, SURFACE } = await import("../src/theme/series.js");
 
 const version = JSON.parse(
   readFileSync("node_modules/@redis-ui/styles/package.json", "utf8"),
@@ -38,6 +38,11 @@ for (const mode of ["light", "dark"]) {
   allOk =
     show(`agent series, categorical (${mode})`,
       validate([SERIES[mode].baseline, SERIES[mode].memory], { mode, surface })) && allOk;
+  // The run-comparison chart draws every run in one hue (dash separates them),
+  // so it is a single-colour check: band, chroma and contrast, no CVD pair.
+  allOk =
+    show(`run comparison, single hue (${mode})`,
+      validate([RUN_STROKE[mode]], { mode, surface })) && allOk;
   allOk =
     show(`phase stack, ordinal (${mode})`,
       validateOrdinal(PHASE_RAMP[mode], { mode, surface })) && allOk;

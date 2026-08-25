@@ -80,11 +80,35 @@ async function render({ fetchImpl }) {
 }
 
 const REAL_FIXTURE = "scripts/fixtures/report-real.json";
+const RUNS_FIXTURE = "scripts/fixtures/runs.json";
+
+// URL-aware, because the page now fetches a run manifest and then one report
+// per run. A fetch stub that ignores its argument would serve the manifest as a
+// report (and vice versa) and every multi-run check would pass on nonsense.
+const serve = (files) => (url) => {
+  const name = String(url).split("/").pop();
+  const path = files[name];
+  if (!path || !existsSync(path)) return Promise.reject(new Error(`404 ${name}`));
+  return Promise.resolve({ ok: true, json: async () => JSON.parse(readFileSync(path, "utf8")) });
+};
+
 const synthetic = await render({ fetchImpl: () => Promise.reject(new Error("no report.json")) });
+// Single-run mode: no manifest, so the page must fall back to report.json.
 const real = existsSync(REAL_FIXTURE)
+  ? await render({ fetchImpl: serve({ "report.json": REAL_FIXTURE }) })
+  : null;
+// Multi-run mode: manifest plus one report per run.
+const runsManifest = existsSync(RUNS_FIXTURE)
+  ? JSON.parse(readFileSync(RUNS_FIXTURE, "utf8"))
+  : null;
+const multi = runsManifest
   ? await render({
-      fetchImpl: () =>
-        Promise.resolve({ ok: true, json: async () => JSON.parse(readFileSync(REAL_FIXTURE, "utf8")) }),
+      fetchImpl: serve({
+        "runs.json": RUNS_FIXTURE,
+        ...Object.fromEntries(
+          runsManifest.runs.map((r) => [r.url, `scripts/fixtures/${r.url}`]),
+        ),
+      }),
     })
   : null;
 
@@ -94,7 +118,20 @@ const CHECKS = [
   ["renders something", () => text.length > 400],
   ["hero thesis", () => /per-repo cost/i.test(text)],
   ["synthetic-data banner", () => /synthetic data/i.test(text)],
-  ["net-saving KPI", () => /net saving/i.test(text)],
+  // The headline is the *marginal* per-review saving. "net saving" alone is a
+  // useless probe now: the words also appear in the caveat paragraph below the
+  // tiles, so the old check passed even when the tile itself was empty.
+  ["saving-per-review is the lead KPI", () => /saving per review/i.test(text)],
+  ["the marginal figure renders a number, not a dash", () => {
+    const m = text.match(/saving per review[\s\S]{0,80}?(-?\d+)%/i);
+    return !!m;
+  }],
+  ["primer payback is priced in reviews", () =>
+    /pays back in/i.test(text) && /\d+(\.\d+)?\s*reviews/i.test(text)],
+  ["context-per-review KPI", () => /context per review/i.test(text)],
+  ["the cumulative figure is qualified, not dropped", () =>
+    /do not depend on sequence length/i.test(text) && /cumulative net saving/i.test(text)],
+  ["the worst PR is disclosed beside the mean", () => /worst single PR/i.test(text)],
   ["break-even KPI", () => /break-even/i.test(text)],
   ["regime toggle present", () => /as measured/i.test(text) && /production cadence/i.test(text)],
   ["act tabs present", () => /where the tokens went/i.test(text)],
@@ -138,11 +175,63 @@ const REAL_CHECKS = real
       ["real report: quality chart rendered", () =>
         /precision|recall|proxy/i.test(real.allText)],
       ["real report: harness warnings surfaced", () => /production-equivalent|budget/i.test(real.text)],
+      // The strongest check on the new headline: the number on screen must be
+      // the one the harness computed. A wrong field path would render "--", and
+      // a stale report.json would render last week's figure -- both of which
+      // look like a working page.
+      ["real report: headline % is the harness's marginal figure", () => {
+        const fixture = JSON.parse(readFileSync(REAL_FIXTURE, "utf8"));
+        const expected = fixture.accounting?.marginal?.as_measured?.aggregate_pct;
+        if (expected == null) return false;
+        return new RegExp(`saving per review[\\s\\S]{0,80}?${Math.round(expected)}%`, "i")
+          .test(real.text);
+      }],
+      ["real report: primer payback matches the harness", () => {
+        const fixture = JSON.parse(readFileSync(REAL_FIXTURE, "utf8"));
+        const payback = fixture.accounting?.marginal?.as_measured?.primer_payback_prs;
+        return payback != null && real.text.includes(`${payback.toFixed(1)} reviews`);
+      }],
+    ]
+  : [];
+
+// Checks that only make sense with more than one published run.
+const MULTI_CHECKS = multi
+  ? [
+      ["multi-run: every run is selectable", () =>
+        runsManifest.runs.every((r) => multi.text.includes(r.id))],
+      ["multi-run: comparison chart present", () =>
+        /both runs against no memory/i.test(multi.text)],
+      ["multi-run: the no-memory reference is labelled", () =>
+        /no memory \(baseline\)/i.test(multi.text)],
+      // The single line the deliverable asked for. It comes from the manifest,
+      // so an empty `note` would render a sentence that explains nothing.
+      ["multi-run: one line explains what differs", () =>
+        /differ only\s+in how memory is retrieved/i.test(multi.text.replace(/\s+/g, " ")) &&
+        runsManifest.runs.every((r) => r.note && multi.text.includes(r.note.replace(/\.$/, "")))],
+      ["multi-run: each run reports its own per-review saving", () => {
+        // Two runs, two different numbers -- if the page reused one run's
+        // accounting for both, these would be identical.
+        const pcts = runsManifest.runs.map((r) => {
+          const rep = JSON.parse(readFileSync(`scripts/fixtures/${r.url}`, "utf8"));
+          return Math.round(rep.accounting.marginal.as_measured.aggregate_pct);
+        });
+        return pcts.every((v) => multi.text.includes(`${v}% per`));
+      }],
+      ["multi-run: a break-even per run", () =>
+        (multi.text.match(/break-even/gi) ?? []).length >= runsManifest.runs.length],
+      ["multi-run: one y-scale per figure (no dual axis)", () =>
+        [...multi.doc.querySelectorAll("figure")].every((f) => f.querySelectorAll("svg").length <= 1)],
+      ["multi-run: lines are distinguishable without colour", () => {
+        // Two runs share one validated hue, so dash is the separator. If both
+        // paths were solid the chart would be unreadable in greyscale.
+        const dashes = [...multi.doc.querySelectorAll("svg path[stroke-dasharray]")];
+        return dashes.length >= 1;
+      }],
     ]
   : [];
 
 let failed = 0;
-for (const [label, fn] of [...CHECKS, ...REAL_CHECKS]) {
+for (const [label, fn] of [...CHECKS, ...REAL_CHECKS, ...MULTI_CHECKS]) {
   let ok = false;
   try { ok = !!fn(); } catch { ok = false; }
   if (!ok) failed += 1;
@@ -152,7 +241,7 @@ if (!real) {
   console.log(`  [skip] real-report checks -- no ${REAL_FIXTURE}`);
 }
 
-const allErrors = [...errors, ...(real?.errors ?? [])];
+const allErrors = [...errors, ...(real?.errors ?? []), ...(multi?.errors ?? [])];
 if (allErrors.length) {
   console.log(`\n  ${allErrors.length} console/jsdom error(s):`);
   for (const e of allErrors.slice(0, 6)) {

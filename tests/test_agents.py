@@ -8,7 +8,12 @@ from reviewbot.agents import BaselineAgent, MemoryAgent
 from reviewbot.claude import ClaudeClient
 from reviewbot.config import ModelConfig
 from reviewbot.github import FileChange, PullRequest
-from reviewbot.memory import REPO_CONVENTION, REVIEW_FINDING, AgentMemoryClient
+from reviewbot.memory import (
+    REPO_CONVENTION,
+    REVIEW_FINDING,
+    AgentMemoryClient,
+    decode_ordinal_attr,
+)
 from reviewbot.repo import DictSourceProvider
 from tests.fakes import FakeClaude, FakeMemoryService
 
@@ -355,3 +360,195 @@ class TestWritePhaseRouting(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRetrievalBudget(unittest.TestCase):
+    """Pooled vs split retrieval, which is a real experimental variable.
+
+    Run-1 used one pooled budget and it came back *full* on every PR from the
+    first one onward. A saturated window is not measuring relevance, it is
+    measuring the limit -- and since the store only ever grows (nothing is
+    merged or superseded), conventions and an accumulating pile of findings
+    compete for the same fixed slots.
+    """
+
+    def _run(self, **kwargs):
+        fake = FakeClaude(
+            facts=FACTS,
+            findings=FINDINGS,
+            memories_used=[],
+            records=WRITE_RECORDS,
+            count_tokens=777,
+        )
+        service = FakeMemoryService()
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        ledger = Ledger(tmp.name, "run-r")
+        client, memory = harness(fake, ledger, service)
+        agent = MemoryAgent(client, memory, conventions=CONVENTIONS, **kwargs)
+        agent.prime(SOURCES)
+        agent.review_pr(PR, 1)
+        searches = [
+            payload
+            for method, path, payload in service.calls
+            if path == "long-term-memory/search"
+        ]
+        return searches, ledger
+
+    def test_the_default_is_one_pooled_search_as_run_1_did(self):
+        # Run-1 must stay reproducible, so the default cannot change shape.
+        searches, _ = self._run()
+        self.assertEqual(len(searches), 1)
+        self.assertEqual(
+            searches[0]["filter"]["memoryType"],
+            {"in": [REPO_CONVENTION, REVIEW_FINDING]},
+        )
+        self.assertEqual(searches[0]["limit"], 20)
+
+    def test_a_split_issues_one_search_per_type_with_its_own_budget(self):
+        searches, _ = self._run(
+            retrieval_limits={REPO_CONVENTION: 6, REVIEW_FINDING: 4}
+        )
+        self.assertEqual(len(searches), 2)
+        budgets = {s["filter"]["memoryType"]["eq"]: s["limit"] for s in searches}
+        self.assertEqual(budgets, {REPO_CONVENTION: 6, REVIEW_FINDING: 4})
+
+    def test_a_type_given_no_budget_is_not_searched_for(self):
+        searches, _ = self._run(retrieval_limits={REPO_CONVENTION: 5})
+        self.assertEqual(len(searches), 1)
+        self.assertEqual(searches[0]["filter"]["memoryType"], {"eq": REPO_CONVENTION})
+
+    def test_splitting_costs_round_trips_and_zero_model_tokens(self):
+        """The reason this knob is safe to turn: it cannot move the cost series.
+
+        Searches are billable=False, so a second one changes the retrieval mix
+        without touching either agent's billed total.
+        """
+        _, ledger = self._run(retrieval_limits={REPO_CONVENTION: 6, REVIEW_FINDING: 4})
+        searches = [r for r in ledger.records() if r.memory_op == "search"]
+        self.assertEqual(len(searches), 2)
+        self.assertFalse(any(r.billable for r in searches))
+        self.assertEqual(sum(r.context_volume for r in searches), 0)
+
+    def test_a_split_search_still_scopes_to_the_namespace_and_modules(self):
+        # Splitting by type must not drop the two clauses that keep runs
+        # isolated and retrieval per-module.
+        searches, _ = self._run(retrieval_limits={REPO_CONVENTION: 6, REVIEW_FINDING: 4})
+        for payload in searches:
+            self.assertEqual(payload["filter"]["namespace"], {"eq": NS})
+            self.assertIn("redis/connection.py", payload["filter"]["topics"]["in"])
+            self.assertEqual(payload["filterOp"], "all")
+
+
+class TestDedupeOnWrite(unittest.TestCase):
+    """A repeat finding updates its record instead of appending a copy.
+
+    The problem this fixes is not token volume -- retrieval saturates its window
+    either way. It is that an append-only store turns a wrong belief into a
+    *growing* one: run-1 restated one false convention 11 times across 9 PRs,
+    and every copy competed for the same fixed retrieval slots.
+    """
+
+    def _agent(self, **kwargs):
+        fake = FakeClaude(
+            facts=FACTS,
+            findings=FINDINGS,
+            memories_used=[],
+            records=WRITE_RECORDS,
+            count_tokens=777,
+        )
+        service = FakeMemoryService()
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        ledger = Ledger(tmp.name, "run-d")
+        client, memory = harness(fake, ledger, service)
+        agent = MemoryAgent(client, memory, conventions=CONVENTIONS, **kwargs)
+        return agent, service, ledger
+
+    def _findings(self, service):
+        return {
+            mid: rec
+            for mid, rec in service.records.items()
+            if rec["memoryType"] == REVIEW_FINDING
+        }
+
+    def test_append_only_writes_a_second_copy_of_the_same_finding(self):
+        """Run-1's behaviour, kept reproducible and pinned as the contrast."""
+        agent, service, _ = self._agent()
+        agent.review_pr(PR, 1)
+        agent.review_pr(PR, 2)
+        ids = sorted(self._findings(service))
+        self.assertEqual(len(ids), 2)
+        # The ordinal in the id is precisely what makes them distinct records.
+        self.assertTrue(any(i.endswith("-1") for i in ids))
+        self.assertTrue(any(i.endswith("-2") for i in ids))
+
+    def test_dedupe_collapses_the_repeat_into_one_record(self):
+        agent, service, _ = self._agent(dedupe_writes=True)
+        agent.review_pr(PR, 1)
+        agent.review_pr(PR, 2)
+        self.assertEqual(len(self._findings(service)), 1)
+
+    def test_recurrence_becomes_explicit_instead_of_a_copy_count(self):
+        agent, service, _ = self._agent(dedupe_writes=True)
+        agent.review_pr(PR, 1)
+        agent.review_pr(PR, 4)
+        record = next(iter(self._findings(service).values()))
+        attrs = record["attributes"]
+        # Attributes come back as strings, so decode rather than compare raw --
+        # asserting on "001" would pin the encoding, not the behaviour.
+        self.assertEqual(decode_ordinal_attr(attrs["occurrences"]), 2)
+        # First-seen, not last-seen: pr_ordinal carries chronology, and
+        # overwriting it would make "when did we learn this" unanswerable.
+        self.assertEqual(decode_ordinal_attr(attrs["pr_ordinal"]), 1)
+        self.assertEqual(decode_ordinal_attr(attrs["last_pr_ordinal"]), 4)
+
+    def test_a_merge_keeps_the_earlier_modules_retrievable(self):
+        """Topics are unioned, not replaced. A recurrence in a different file
+        must not make the record unreachable from the first one."""
+        agent, service, _ = self._agent(dedupe_writes=True)
+        agent.review_pr(PR, 1)
+        first = next(iter(self._findings(service).values()))
+        original_topics = set(first["topics"])
+        agent.review_pr(PR, 2)
+        merged = next(iter(self._findings(service).values()))
+        self.assertTrue(original_topics <= set(merged["topics"]))
+
+    def test_the_merge_is_logged_as_a_measured_thing(self):
+        _, _, ledger = (lambda t: t)(self._agent(dedupe_writes=True))
+        agent, service, ledger = self._agent(dedupe_writes=True)
+        agent.review_pr(PR, 1)
+        agent.review_pr(PR, 2)
+        notes = [
+            r.notes
+            for r in ledger.records()
+            if r.memory_op == "measure" and "deduped_writes" in (r.notes or {})
+        ]
+        self.assertTrue(notes)
+        self.assertGreaterEqual(notes[-1]["deduped_writes"], 1)
+
+    def test_a_merge_uses_the_guarded_patch_not_a_blind_overwrite(self):
+        agent, service, _ = self._agent(dedupe_writes=True)
+        agent.review_pr(PR, 1)
+        agent.review_pr(PR, 2)
+        patches = [c for c in service.calls if c[0] == "PATCH"]
+        self.assertTrue(patches)
+        # The guard is the service's: it rejects unless both match the stored
+        # record, which is what stops a write clobbering another run's memory.
+        for _, _, payload in patches:
+            self.assertEqual(payload["memoryType"], REVIEW_FINDING)
+            self.assertEqual(payload["namespace"], NS)
+
+    def test_dedupe_costs_no_model_tokens(self):
+        """The reason this is safe to turn on: a GET and a PATCH are both
+        billable=False, so the write phase's model cost is unchanged."""
+        agent, _, ledger = self._agent(dedupe_writes=True)
+        agent.review_pr(PR, 1)
+        before = sum(r.billed_usd() for r in ledger.records() if r.billable)
+        agent.review_pr(PR, 2)
+        after = sum(r.billed_usd() for r in ledger.records() if r.billable)
+        write_ops = [r for r in ledger.records() if r.memory_op in ("update", "measure")]
+        self.assertTrue(any(r.memory_op == "update" for r in write_ops))
+        self.assertFalse(any(r.billable for r in write_ops))
+        # The second review still costs model tokens; the *merge* adds none.
+        self.assertGreater(after, before)

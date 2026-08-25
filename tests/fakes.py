@@ -17,11 +17,28 @@ class FilterRejected(Exception):
 
 
 class FakeMemoryService:
-    def __init__(self, *, visibility_lag: int = 0, reject_ids: set[str] | None = None):
+    def __init__(
+        self,
+        *,
+        visibility_lag: int = 0,
+        reject_ids: set[str] | None = None,
+        phantom_ids: set[str] | None = None,
+        phantom_forever: bool = False,
+    ):
         self.records: dict[str, dict[str, Any]] = {}
         self.pending: dict[str, int] = {}
         self.visibility_lag = visibility_lag
         self.reject_ids = reject_ids or set()
+        # Verified live 2026-08-25: a bulk create can list an id in `created`
+        # with `errors` empty and never store it. Not eventual consistency --
+        # the record was still absent minutes later, while the same id wrote and
+        # read back instantly elsewhere. Modeled because no amount of waiting
+        # fixes it and the only recovery is to create it again.
+        self.phantom_ids = set(phantom_ids or set())
+        # When False a phantom is dropped once and stored on retry (the real
+        # service's behaviour); when True it never stores, so the caller's
+        # give-up path is reachable in a test.
+        self.phantom_forever = phantom_forever
         self.calls: list[tuple[str, str, Any]] = []
         self.clock = 0
 
@@ -71,6 +88,12 @@ class FakeMemoryService:
         for rec in payload["memories"]:
             if rec["id"] in self.reject_ids:
                 errors.append({"id": rec["id"], "error": "simulated rejection"})
+                continue
+            if rec["id"] in self.phantom_ids:
+                # Reported as created, never stored, no error. The whole point.
+                if not self.phantom_forever:
+                    self.phantom_ids.discard(rec["id"])
+                created.append(rec["id"])
                 continue
             stored = dict(rec)
             stored["createdAt"] = "2026-01-01T00:00:00Z"  # server-assigned
